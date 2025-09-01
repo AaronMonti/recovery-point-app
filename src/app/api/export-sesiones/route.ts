@@ -3,6 +3,12 @@ import * as XLSX from 'xlsx';
 import { getSesionesPorRangoFechas } from '@/lib/actions';
 import { format, parse, eachDayOfInterval } from 'date-fns';
 
+interface SesionData {
+  nombre_paciente: string;
+  sentimiento: 'verde' | 'amarillo' | 'rojo';
+  hora: string;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { startDate, endDate } = await request.json();
@@ -47,14 +53,14 @@ export async function POST(request: NextRequest) {
     // Agregar datos por día
     todasLasFechas.forEach(fecha => {
       const fechaStr = format(fecha, 'dd-MM-yyyy');
-      const sesiones = (sesionesPorDia as Record<string, any[]>)[fechaStr] || [];
+      const sesiones = (sesionesPorDia as Record<string, SesionData[]>)[fechaStr] || [];
       
       // Agregar encabezado del día
       mainData.push([`DÍA: ${fechaStr}`]);
       mainData.push(['NOMBRE', 'COLOR', 'HORA']);
       
       if (sesiones.length > 0) {
-        sesiones.forEach((sesion: any) => {
+        sesiones.forEach((sesion: SesionData) => {
           mainData.push([
             sesion.nombre_paciente,
             sesion.sentimiento.toUpperCase(),
@@ -87,10 +93,10 @@ export async function POST(request: NextRequest) {
     // Agregar datos del resumen por día
     todasLasFechas.forEach(fecha => {
       const fechaStr = format(fecha, 'dd-MM-yyyy');
-      const sesiones = (sesionesPorDia as Record<string, any[]>)[fechaStr] || [];
-      const verde = sesiones.filter((s: any) => s.sentimiento === 'verde').length;
-      const amarillo = sesiones.filter((s: any) => s.sentimiento === 'amarillo').length;
-      const rojo = sesiones.filter((s: any) => s.sentimiento === 'rojo').length;
+      const sesiones = (sesionesPorDia as Record<string, SesionData[]>)[fechaStr] || [];
+      const verde = sesiones.filter((s: SesionData) => s.sentimiento === 'verde').length;
+      const amarillo = sesiones.filter((s: SesionData) => s.sentimiento === 'amarillo').length;
+      const rojo = sesiones.filter((s: SesionData) => s.sentimiento === 'rojo').length;
       
       resumenData.push([
         fechaStr,

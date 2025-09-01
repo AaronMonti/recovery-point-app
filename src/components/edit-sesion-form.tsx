@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { Heart, Smile, Meh, Frown, Save, Calendar, Clock, Loader2 } from "lucide-react";
+import { Heart, Smile, Meh, Frown, Save, Clock, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useFormStatus } from "react-dom";
 
@@ -23,20 +23,16 @@ interface EditSesionFormProps {
 }
 
 function FormFields({ 
-  sesion, 
   selectedSentimiento, 
   setSelectedSentimiento, 
-  fecha, 
   setFecha, 
   hora, 
   setHora, 
   selectedDate, 
   setSelectedDate 
 }: {
-  sesion: EditSesionFormProps['sesion'];
   selectedSentimiento: string;
   setSelectedSentimiento: (value: string) => void;
-  fecha: string;
   setFecha: (value: string) => void;
   hora: string;
   setHora: (value: string) => void;
@@ -44,21 +40,6 @@ function FormFields({
   setSelectedDate: (date: Date | undefined) => void;
 }) {
   const { pending } = useFormStatus();
-
-  // Convertir fecha dd-mm-yyyy a Date object para el DatePicker
-  const parseFecha = (fechaStr: string): Date | undefined => {
-    const parts = fechaStr.split('-');
-    if (parts.length === 3) {
-      const day = parseInt(parts[0], 10);
-      const month = parseInt(parts[1], 10);
-      const year = parseInt(parts[2], 10);
-      
-      if (day && month && year && year > 1900 && year < 2100) {
-        return new Date(year, month - 1, day);
-      }
-    }
-    return undefined;
-  };
 
   // Manejar cambio de fecha desde el DatePicker
   const handleDateChange = (date: Date | undefined) => {
@@ -259,10 +240,8 @@ export function EditSesionForm({ sesion, onClose }: EditSesionFormProps) {
   return (
     <form action={handleSubmit} className="space-y-6">
       <FormFields 
-        sesion={sesion}
         selectedSentimiento={selectedSentimiento}
         setSelectedSentimiento={setSelectedSentimiento}
-        fecha={fecha}
         setFecha={setFecha}
         hora={hora}
         setHora={setHora}
