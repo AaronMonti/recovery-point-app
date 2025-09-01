@@ -1,0 +1,1 @@
+ALTER TABLE `pacientes` ALTER COLUMN "created_at" TO "created_at" text;

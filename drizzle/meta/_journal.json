@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1756671266698,
+      "tag": "0000_gifted_speedball",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1756702690954,
+      "tag": "0001_wet_absorbing_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1756702757073,
+      "tag": "0002_workable_blackheart",
+      "breakpoints": true
+    }
+  ]
+}

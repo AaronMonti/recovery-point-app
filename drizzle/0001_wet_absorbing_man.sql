@@ -1,0 +1,1 @@
+ALTER TABLE `pacientes` ADD `created_at` text DEFAULT CURRENT_TIMESTAMP NOT NULL;

@@ -1,103 +1,209 @@
-import Image from "next/image";
+import { getPacientesConBusqueda } from "@/lib/actions";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import Link from "next/link";
+import { DateFilter } from "@/components/date-filter";
+import { SearchBar } from "@/components/search-bar";
+import { PaginationControls } from "@/components/pagination-controls";
+import { ExportExcelButton } from "@/components/export-excel-button";
+import { Suspense } from "react";
+import { ModeToggle } from "@/components/theme-toggle";
+import { EditPacienteDialog } from "@/components/edit-paciente-dialog";
+import { DeletePacienteDialog } from "@/components/delete-paciente-dialog";
+import {
+  Plus,
+  Users,
+  Calendar,
+  UserCheck,
+  Trash2,
+  Eye,
+  Activity,
+  Clock,
+  Edit,
+  Info
+} from "lucide-react";
 
-export default function Home() {
+export default async function Home({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
+  const params = await searchParams;
+  const startDate = typeof params.startDate === 'string' ? params.startDate : undefined;
+  const endDate = typeof params.endDate === 'string' ? params.endDate : undefined;
+  const searchQuery = typeof params.search === 'string' ? params.search : undefined;
+  const currentPage = typeof params.page === 'string' ? parseInt(params.page) : 1;
+
+  const pageSize = 9; // 3x3 grid
+  const result = await getPacientesConBusqueda(startDate, endDate, searchQuery, currentPage, pageSize);
+  const { pacientes, total, totalPages } = result;
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <main className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+      <div className="container mx-auto py-8 px-4 md:px-6">
+        {/* Header con toggle de tema */}
+        <div className="flex justify-end mb-6">
+          <ModeToggle />
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+
+        {/* Título principal y botones */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
+          <div className="space-y-2">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+              Gestión de Pacientes
+            </h1>
+            <p className="text-muted-foreground text-lg">
+              Administra y monitorea el progreso de tus pacientes
+            </p>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Info className="h-4 w-4" />
+              Mostrando pacientes creados en los últimos 12 meses
+            </div>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <ExportExcelButton />
+            <Link href="/paciente/nuevo">
+              <Button size="lg" className="gap-2 shadow-lg hover:shadow-xl transition-all duration-200">
+                <Plus className="h-5 w-5" />
+                Nuevo Paciente
+              </Button>
+            </Link>
+          </div>
+        </div>
+
+        {/* Barra de búsqueda y filtros */}
+        <div className="mb-10">
+          <div className="flex flex-col lg:flex-row gap-4 justify-between">
+            <SearchBar />
+            <Suspense fallback={
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Clock className="h-4 w-4 animate-spin" />
+                Cargando filtros...
+              </div>
+            }>
+              <DateFilter />
+            </Suspense>
+          </div>
+        </div>
+
+        {/* Información de resultados */}
+        {total > 0 && (
+          <div className="mb-6 text-sm text-muted-foreground">
+            Mostrando {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, total)} de {total} pacientes
+          </div>
+        )}
+
+        {/* Contenido principal */}
+        {pacientes && pacientes.length > 0 ? (
+          <div className="space-y-6">
+            {/* Grid de pacientes */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {pacientes.map((paciente) => (
+                <Card key={paciente.id} className="group hover:shadow-lg transition-all duration-200 border-muted-foreground/20 overflow-hidden">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-xl font-semibold group-hover:text-primary transition-colors">
+                        {paciente.nombre_paciente}
+                      </CardTitle>
+                      <div className="p-2 bg-muted rounded-full">
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 text-sm">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-muted-foreground">Kinesiólogo:</span>
+                        <span className="font-medium">{paciente.nombre_kinesiologo}</span>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground flex items-center gap-1">
+                            <Activity className="h-3 w-3" />
+                            Progreso de sesiones
+                          </span>
+                          <span className="text-sm font-medium bg-muted px-2 py-1 rounded-full">
+                            {paciente.sesiones_completadas} de {paciente.sesiones_totales}
+                          </span>
+                        </div>
+                        <Progress
+                          value={(paciente.sesiones_completadas / paciente.sesiones_totales) * 100}
+                          className="h-3"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 pt-2 w-full">
+                      <Link href={`/paciente/${paciente.id}`} className="flex-1 min-w-[150px]">
+                        <Button variant="outline" className="w-full gap-2 group/btn">
+                          <Eye className="group-hover/btn:scale-110 transition-transform" />
+                          Ver detalles
+                        </Button>
+                      </Link>
+
+                      <EditPacienteDialog paciente={paciente}>
+                        <div className="flex-1 min-w-[150px]">
+                          <Button variant="secondary" className="w-full gap-2 group/btn">
+                            <Edit className="group-hover/btn:scale-110 transition-transform" />
+                            Editar
+                          </Button>
+                        </div>
+                      </EditPacienteDialog>
+
+                      <DeletePacienteDialog paciente={paciente}>
+                        <div className="flex-1 min-w-[150px]">
+                          <Button variant="destructive" className="w-full gap-2 group/btn">
+                            <Trash2 className="group-hover/btn:scale-110 transition-transform" />
+                            Eliminar
+                          </Button>
+                        </div>
+                      </DeletePacienteDialog>
+                    </div>
+
+
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {/* Paginación */}
+            <div className="flex justify-center">
+              <PaginationControls currentPage={currentPage} totalPages={totalPages} />
+            </div>
+          </div>
+        ) : (
+          <Card className="border-muted-foreground/20 shadow-sm">
+            <CardContent className="text-center py-16">
+              <div className="space-y-4">
+                <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center">
+                  <Users className="h-8 w-8 text-muted-foreground" />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-xl font-semibold">No se encontraron pacientes</h3>
+                  {(startDate || endDate || searchQuery) && (
+                    <p className="text-muted-foreground max-w-md mx-auto">
+                      {searchQuery
+                        ? `No hay pacientes que coincidan con "${searchQuery}"`
+                        : "No hay pacientes creados en el rango de fechas seleccionado."
+                      }
+                    </p>
+                  )}
+                  {!startDate && !endDate && !searchQuery && (
+                    <p className="text-muted-foreground max-w-md mx-auto">
+                      No hay pacientes creados en los últimos 12 meses. Comienza agregando tu primer paciente.
+                    </p>
+                  )}
+                </div>
+                <Link href="/paciente/nuevo">
+                  <Button className="gap-2 mt-4">
+                    <Plus className="h-4 w-4" />
+                    Agregar primer paciente
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </main>
   );
 }
