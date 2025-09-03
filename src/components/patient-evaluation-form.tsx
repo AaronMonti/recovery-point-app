@@ -71,8 +71,7 @@ export function PatientEvaluationForm({ pacienteId, pacienteNombre, evaluationTy
   const [currentStep, setCurrentStep] = useState(0)
   const [responses, setResponses] = useState<EvaluationResponse[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [ultimaSesion, setUltimaSesion] = useState<any>(null)
-  const [evaluacionesExistentes, setEvaluacionesExistentes] = useState<any[]>([])
+  const [ultimaSesion, setUltimaSesion] = useState<{ id: string; fecha: string; hora: string; sentimiento: string } | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   const questions = evaluationType === 'pre' ? preQuestions : postQuestions
@@ -92,13 +91,12 @@ export function PatientEvaluationForm({ pacienteId, pacienteNombre, evaluationTy
 
         // Verificar si ya existe una evaluación para esta sesión
         const evaluaciones = await getEvaluacionesPorSesion(sesion.id)
-        setEvaluacionesExistentes(evaluaciones)
 
         // Si ya existe una evaluación del mismo tipo, mostrar advertencia
         const evaluacionExistente = evaluaciones.find(evaluacion => {
           const respuestas = JSON.parse(evaluacion.respuestasComprimidas)
-          const tieneEvaluacionPre = respuestas.some((r: any) => r.questionId.includes('_pre'))
-          const tieneEvaluacionPost = respuestas.some((r: any) => r.questionId.includes('_post'))
+          const tieneEvaluacionPre = respuestas.some((r: EvaluationResponse) => r.questionId.includes('_pre'))
+          const tieneEvaluacionPost = respuestas.some((r: EvaluationResponse) => r.questionId.includes('_post'))
           
           return (evaluationType === 'pre' && tieneEvaluacionPre) || 
                  (evaluationType === 'post' && tieneEvaluacionPost)
@@ -418,7 +416,7 @@ export function PatientEvaluationForm({ pacienteId, pacienteNombre, evaluationTy
         </CardHeader>
         <CardContent>
           <div className="grid gap-3">
-            {questions.map((question, index) => {
+            {questions.map((question) => {
               const response = responses.find(r => r.questionId === question.id);
               const hasResponse = response !== undefined;
               

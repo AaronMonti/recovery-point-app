@@ -21,7 +21,7 @@ export interface EvaluationStatus {
   preAverage?: number
   postAverage?: number
   overallAverage?: number
-  ultimaSesion?: any
+  ultimaSesion?: { id: string; fecha: string; hora: string; sentimiento: string } | null
   isLoading: boolean
 }
 

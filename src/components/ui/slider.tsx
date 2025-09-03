@@ -20,6 +20,15 @@ const Slider = React.forwardRef<HTMLDivElement, SliderProps>(
 
     const percentage = ((value - min) / (max - min)) * 100
 
+    const updateValue = React.useCallback((clientX: number) => {
+      if (!sliderRef.current) return
+
+      const rect = sliderRef.current.getBoundingClientRect()
+      const percentage = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
+      const newValue = Math.round((percentage * (max - min) + min) / step) * step
+      onValueChange(Math.max(min, Math.min(max, newValue)))
+    }, [max, min, step, onValueChange])
+
     const handlePointerDown = (e: React.PointerEvent) => {
       if (disabled) return
       setIsDragging(true)
@@ -32,7 +41,7 @@ const Slider = React.forwardRef<HTMLDivElement, SliderProps>(
         updateValue(e.clientX)
         e.preventDefault()
       }
-    }, [isDragging, disabled])
+    }, [isDragging, disabled, updateValue])
 
     const handlePointerUp = React.useCallback(() => {
       setIsDragging(false)
@@ -41,15 +50,6 @@ const Slider = React.forwardRef<HTMLDivElement, SliderProps>(
     const handleClick = (e: React.MouseEvent) => {
       if (disabled || isDragging) return
       updateValue(e.clientX)
-    }
-
-    const updateValue = (clientX: number) => {
-      if (!sliderRef.current) return
-
-      const rect = sliderRef.current.getBoundingClientRect()
-      const percentage = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
-      const newValue = Math.round((percentage * (max - min) + min) / step) * step
-      onValueChange(Math.max(min, Math.min(max, newValue)))
     }
 
     React.useEffect(() => {

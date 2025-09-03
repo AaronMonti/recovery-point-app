@@ -5,6 +5,11 @@ import { db } from "./db";
 import { pacientes, sesiones_diarias, evaluaciones } from "./schema";
 import { eq, and, gte, lte, inArray, sql, desc } from "drizzle-orm";
 
+interface EvaluationResponse {
+  questionId: string;
+  value: number;
+}
+
 export async function getPacientes(startDate?: string, endDate?: string) {
   try {
     
@@ -159,11 +164,11 @@ export async function getPacientesConBusqueda(
             .all();
           
           // Verificar si falta la evaluación post-sesión
-          evaluacionesData.forEach((evaluacion: any) => {
+          evaluacionesData.forEach((evaluacion: { respuestasComprimidas: string }) => {
             try {
               const respuestas = JSON.parse(evaluacion.respuestasComprimidas);
-              const tieneEvaluacionPre = respuestas.some((r: any) => r.questionId.includes('_pre'));
-              const tieneEvaluacionPost = respuestas.some((r: any) => r.questionId.includes('_post'));
+              const tieneEvaluacionPre = respuestas.some((r: EvaluationResponse) => r.questionId.includes('_pre'));
+              const tieneEvaluacionPost = respuestas.some((r: EvaluationResponse) => r.questionId.includes('_post'));
               
               // Si tiene pre-evaluación pero no post-evaluación, está pendiente
               if (tieneEvaluacionPre && !tieneEvaluacionPost) {
@@ -297,7 +302,7 @@ export async function getSesionesDiarias(paciente_id: string) {
             // Calcular promedio general de todos los promedios
             const valores = Object.values(promedios).filter(val => typeof val === 'number');
             if (valores.length > 0) {
-              promedioGeneral = valores.reduce((sum: number, val: any) => sum + val, 0) / valores.length;
+              promedioGeneral = valores.reduce((sum: number, val: number) => sum + val, 0) / valores.length;
             }
           } catch (error) {
             console.error('Error parseando promedios:', error);
@@ -528,10 +533,10 @@ export async function createEvaluacion(data: {
       console.log('Actualizando evaluación existente:', evaluacionExistente.id);
       
       // Parsear respuestas existentes
-      let respuestasExistentes: any[] = [];
+      let respuestasExistentes: EvaluationResponse[] = [];
       try {
         respuestasExistentes = JSON.parse(evaluacionExistente.respuestasComprimidas);
-      } catch (error) {
+      } catch {
         console.warn('Error parseando respuestas existentes, iniciando array vacío');
         respuestasExistentes = [];
       }
@@ -541,7 +546,7 @@ export async function createEvaluacion(data: {
       
       // Combinar respuestas (evitar duplicados)
       const respuestasCombinadas = [...respuestasExistentes];
-      nuevasRespuestas.forEach((nuevaRespuesta: any) => {
+      nuevasRespuestas.forEach((nuevaRespuesta: EvaluationResponse) => {
         const index = respuestasCombinadas.findIndex(r => r.questionId === nuevaRespuesta.questionId);
         if (index >= 0) {
           respuestasCombinadas[index] = nuevaRespuesta;

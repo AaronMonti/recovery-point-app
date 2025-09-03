@@ -5,6 +5,11 @@ import Link from "next/link";
 import { ArrowLeft, ClipboardList, TrendingUp, Calendar, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
+interface EvaluationResponse {
+  questionId: string;
+  value: number;
+}
+
 export default async function HistorialEvaluaciones({ 
   params 
 }: { 
@@ -27,13 +32,13 @@ export default async function HistorialEvaluaciones({
     );
   }
 
-  const parsearEvaluacion = (evaluacion: any) => {
+  const parsearEvaluacion = (evaluacion: { respuestasComprimidas: string; promediosComprimidos: string; fecha: string; sesionFecha: string; sesionHora: string }) => {
     try {
       const respuestas = JSON.parse(evaluacion.respuestasComprimidas);
       const promedios = JSON.parse(evaluacion.promediosComprimidos);
       
-      const tieneEvaluacionPre = respuestas.some((r: any) => r.questionId.includes('_pre'));
-      const tieneEvaluacionPost = respuestas.some((r: any) => r.questionId.includes('_post'));
+      const tieneEvaluacionPre = respuestas.some((r: EvaluationResponse) => r.questionId.includes('_pre'));
+      const tieneEvaluacionPost = respuestas.some((r: EvaluationResponse) => r.questionId.includes('_post'));
       
       return {
         tipo: tieneEvaluacionPre ? 'Pre-sesión' : 'Post-sesión',
@@ -51,7 +56,7 @@ export default async function HistorialEvaluaciones({
 
   const evaluacionesParseadas = evaluaciones
     .map(parsearEvaluacion)
-    .filter(Boolean);
+    .filter((evaluacion): evaluacion is NonNullable<ReturnType<typeof parsearEvaluacion>> => evaluacion !== null);
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
@@ -110,7 +115,7 @@ export default async function HistorialEvaluaciones({
                               </span>
                             </div>
                             <div className="text-lg font-bold text-primary">
-                              {value}/10
+                              {value as number}/10
                             </div>
                           </div>
                         ))}
@@ -120,7 +125,7 @@ export default async function HistorialEvaluaciones({
                       <div className="space-y-2">
                         <h4 className="font-semibold text-sm text-muted-foreground">Respuestas detalladas:</h4>
                         <div className="grid gap-2">
-                          {evaluacion.respuestas.map((respuesta: any, respIndex: number) => {
+                          {evaluacion.respuestas.map((respuesta: EvaluationResponse, respIndex: number) => {
                             const pregunta = respuesta.questionId.includes('dolor') ? 'Dolor' :
                                            respuesta.questionId.includes('movilidad') ? 'Movilidad' :
                                            respuesta.questionId.includes('energia') ? 'Energía' :

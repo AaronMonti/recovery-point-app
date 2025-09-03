@@ -6,6 +6,13 @@ import { ArrowLeft, ClipboardList, Calendar, Clock, Activity } from "lucide-reac
 import { PatientEvaluationForm } from "@/components/patient-evaluation-form";
 import { Badge } from "@/components/ui/badge";
 
+interface EvaluationResponse {
+  questionId: string;
+  value: number;
+  questionText?: string;
+  answer?: string;
+}
+
 export default async function EvaluacionPaciente({ 
   params, 
   searchParams 
@@ -97,7 +104,7 @@ export default async function EvaluacionPaciente({
                             const promedios = JSON.parse(evaluacionSesion.promediosComprimidos);
                             const valores = Object.values(promedios).filter(val => typeof val === 'number');
                             if (valores.length > 0) {
-                              const promedio = valores.reduce((sum: number, val: any) => sum + val, 0) / valores.length;
+                              const promedio = valores.reduce((sum: number, val: number) => sum + val, 0) / valores.length;
                               return Math.round(promedio * 100) / 100;
                             }
                             return 'N/A';
@@ -141,7 +148,7 @@ export default async function EvaluacionPaciente({
                     {(() => {
                       try {
                         const respuestas = JSON.parse(evaluacionSesion.respuestasComprimidas);
-                        return respuestas.map((respuesta: any, index: number) => (
+                        return respuestas.map((respuesta: EvaluationResponse, index: number) => (
                           <div key={index} className="p-3 bg-muted/20 rounded-lg">
                             <p className="font-medium text-sm mb-1">{respuesta.questionText}</p>
                             <p className="text-sm text-muted-foreground">
