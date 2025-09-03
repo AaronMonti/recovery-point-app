@@ -406,7 +406,6 @@ export async function deleteSesionDiaria(id: string, paciente_id: string) {
 
 export async function getSesionesPorRangoFechas(startDate: string, endDate: string) {
   try {
-    console.log('Buscando sesiones entre:', startDate, 'y', endDate);
     
     // Obtener todas las sesiones con información del paciente
     const sesiones = await db
@@ -425,8 +424,6 @@ export async function getSesionesPorRangoFechas(startDate: string, endDate: stri
       .orderBy(sesiones_diarias.fecha, sesiones_diarias.hora)
       .all();
 
-    console.log('Todas las sesiones encontradas:', sesiones.map(s => ({ fecha: s.fecha, paciente: s.nombre_paciente })));
-
     // Filtrar sesiones por rango de fechas
     const sesionesEnRango = sesiones.filter(sesion => {
       // Convertir fechas de DD-MM-YYYY a objetos Date para comparación
@@ -440,12 +437,10 @@ export async function getSesionesPorRangoFechas(startDate: string, endDate: stri
       const fechaFin = new Date(endAño, endMes - 1, endDia);
       
       const enRango = fechaSesion >= fechaInicio && fechaSesion <= fechaFin;
-      console.log(`Sesión ${sesion.fecha} (${fechaSesion.toISOString()}) en rango ${fechaInicio.toISOString()} - ${fechaFin.toISOString()}: ${enRango}`);
       
       return enRango;
     });
 
-    console.log('Sesiones en rango:', sesionesEnRango.map(s => ({ fecha: s.fecha, paciente: s.nombre_paciente })));
 
     // Organizar sesiones por día
     const sesionesPorDia: Record<string, typeof sesiones> = {};
@@ -478,7 +473,6 @@ export async function getSesionesPorRangoFechas(startDate: string, endDate: stri
 // Funciones para manejar evaluaciones
 export async function getUltimaSesion(pacienteId: string) {
   try {
-    console.log('Buscando última sesión para paciente:', pacienteId);
     
     const ultimaSesion = await db
       .select()
@@ -487,7 +481,6 @@ export async function getUltimaSesion(pacienteId: string) {
       .orderBy(desc(sesiones_diarias.fecha), desc(sesiones_diarias.hora))
       .get();
     
-    console.log('Última sesión encontrada:', ultimaSesion);
     return ultimaSesion;
   } catch (error) {
     console.error("Error obteniendo última sesión:", error);
@@ -497,7 +490,6 @@ export async function getUltimaSesion(pacienteId: string) {
 
 export async function getEvaluacionesPorSesion(sesionId: string) {
   try {
-    console.log('Buscando evaluaciones para sesión:', sesionId);
     
     const evaluacionesData = await db
       .select()
@@ -505,7 +497,6 @@ export async function getEvaluacionesPorSesion(sesionId: string) {
       .where(eq(evaluaciones.sesionId, sesionId))
       .all();
     
-    console.log('Evaluaciones encontradas:', evaluacionesData.length);
     return evaluacionesData;
   } catch (error) {
     console.error("Error obteniendo evaluaciones:", error);
@@ -530,7 +521,6 @@ export async function createEvaluacion(data: {
 
     if (evaluacionExistente) {
       // Actualizar evaluación existente
-      console.log('Actualizando evaluación existente:', evaluacionExistente.id);
       
       // Parsear respuestas existentes
       let respuestasExistentes: EvaluationResponse[] = [];
@@ -574,7 +564,6 @@ export async function createEvaluacion(data: {
       return { success: true, message: "Evaluación actualizada con éxito." };
     } else {
       // Crear nueva evaluación
-      console.log('Creando nueva evaluación');
       const newEvaluacion = {
         id: crypto.randomUUID(),
         pacienteId: data.pacienteId,
@@ -624,7 +613,6 @@ export async function getEvaluacionesPorPaciente(pacienteId: string) {
 // Función para limpiar evaluaciones corruptas o vacías
 export async function limpiarEvaluacionesCorruptas() {
   try {
-    console.log('Limpiando evaluaciones corruptas...');
     
     // Obtener todas las evaluaciones
     const todasEvaluaciones = await db
@@ -632,7 +620,6 @@ export async function limpiarEvaluacionesCorruptas() {
       .from(evaluaciones)
       .all();
     
-    console.log('Total de evaluaciones encontradas:', todasEvaluaciones.length);
     
     const evaluacionesCorruptas: string[] = [];
     
@@ -644,22 +631,18 @@ export async function limpiarEvaluacionesCorruptas() {
             typeof evaluacion.respuestasComprimidas !== 'string' ||
             !evaluacion.respuestasComprimidas.startsWith('[') && !evaluacion.respuestasComprimidas.startsWith('{')) {
           evaluacionesCorruptas.push(evaluacion.id);
-          console.log('Evaluación corrupta encontrada:', evaluacion.id, 'Datos:', evaluacion.respuestasComprimidas);
         } else {
           // Intentar parsear para verificar que sea JSON válido y no esté vacío
           const respuestas = JSON.parse(evaluacion.respuestasComprimidas);
           if (!Array.isArray(respuestas) || respuestas.length === 0) {
             evaluacionesCorruptas.push(evaluacion.id);
-            console.log('Evaluación vacía encontrada:', evaluacion.id);
           }
         }
       } catch (error) {
         evaluacionesCorruptas.push(evaluacion.id);
-        console.log('Evaluación corrupta encontrada:', evaluacion.id, 'Error:', error);
       }
     });
     
-    console.log('Evaluaciones corruptas encontradas:', evaluacionesCorruptas.length);
     
     // Eliminar evaluaciones corruptas
     if (evaluacionesCorruptas.length > 0) {
@@ -667,7 +650,6 @@ export async function limpiarEvaluacionesCorruptas() {
         .delete(evaluaciones)
         .where(inArray(evaluaciones.id, evaluacionesCorruptas));
       
-      console.log('Evaluaciones corruptas eliminadas:', evaluacionesCorruptas.length);
     }
     
     return {

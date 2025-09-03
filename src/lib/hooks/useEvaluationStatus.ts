@@ -34,18 +34,15 @@ export function useEvaluationStatus(pacienteId: string): EvaluationStatus {
   })
 
   useEffect(() => {
-    console.log('useEvaluationStatus: useEffect ejecutándose para pacienteId:', pacienteId);
     
     const checkEvaluationStatus = async () => {
       try {
-        console.log('useEvaluationStatus: Iniciando checkEvaluationStatus');
         setStatus(prev => ({ ...prev, isLoading: true }))
 
         // Obtener la última sesión del paciente
         const ultimaSesion = await getUltimaSesion(pacienteId)
         
         if (!ultimaSesion) {
-          console.log('useEvaluationStatus: No se encontró última sesión');
           setStatus({
             preCompleted: false,
             postCompleted: false,
@@ -55,7 +52,6 @@ export function useEvaluationStatus(pacienteId: string): EvaluationStatus {
           return
         }
 
-        console.log('useEvaluationStatus: Última sesión encontrada:', ultimaSesion.id);
         
         // Obtener evaluaciones de la última sesión
         const evaluaciones = await getEvaluacionesPorSesion(ultimaSesion.id)
@@ -73,7 +69,6 @@ export function useEvaluationStatus(pacienteId: string): EvaluationStatus {
             if (!evaluacion.respuestasComprimidas || 
                 typeof evaluacion.respuestasComprimidas !== 'string' ||
                 !evaluacion.respuestasComprimidas.startsWith('[') && !evaluacion.respuestasComprimidas.startsWith('{')) {
-              console.warn('Datos de evaluación no válidos:', evaluacion.respuestasComprimidas);
               return;
             }
             
@@ -81,7 +76,6 @@ export function useEvaluationStatus(pacienteId: string): EvaluationStatus {
             
             // Solo procesar si hay respuestas válidas
             if (respuestas.length === 0) {
-              console.warn('Evaluación con respuestas vacías:', evaluacion.id);
               return;
             }
             
@@ -100,7 +94,6 @@ export function useEvaluationStatus(pacienteId: string): EvaluationStatus {
             }
           } catch (error) {
             console.error('Error parsing evaluation responses:', error)
-            console.error('Datos problemáticos:', evaluacion.respuestasComprimidas)
           }
         })
 
@@ -112,15 +105,6 @@ export function useEvaluationStatus(pacienteId: string): EvaluationStatus {
         } else if (postAverage !== undefined) {
           overallAverage = postAverage
         }
-
-        console.log('useEvaluationStatus: Estado calculado:', {
-          preCompleted,
-          postCompleted,
-          canDoPost: preCompleted && !postCompleted,
-          preAverage,
-          postAverage,
-          overallAverage
-        });
 
         setStatus({
           preCompleted,
@@ -142,14 +126,12 @@ export function useEvaluationStatus(pacienteId: string): EvaluationStatus {
 
     // Solo escuchar eventos de actualización cuando sea necesario
     const handleUpdate = () => {
-      console.log('Evento de actualización recibido, verificando estado...');
       checkEvaluationStatus();
     }
 
     window.addEventListener('evaluationStatusUpdate', handleUpdate)
 
     return () => {
-      console.log('useEvaluationStatus: Cleanup ejecutándose');
       window.removeEventListener('evaluationStatusUpdate', handleUpdate)
     }
   }, [pacienteId])
