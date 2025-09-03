@@ -8,6 +8,7 @@ import { EditPacienteDialog } from "@/components/edit-paciente-dialog";
 import { DeletePacienteDialog } from "@/components/delete-paciente-dialog";
 import { EditSesionDialog } from "@/components/edit-sesion-dialog";
 import { DeleteSesionDialog } from "@/components/delete-sesion-dialog";
+import { EvaluationButton } from "@/components/evaluation-button";
 import {
   Edit,
   Trash2,
@@ -18,7 +19,10 @@ import {
   Activity,
   Plus,
   Clock,
-  FileText
+  FileText,
+  ClipboardList,
+  CreditCard,
+  Building
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
@@ -94,18 +98,26 @@ export default async function PacienteDetalle({ params }: { params: Promise<{ id
           <CardContent>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-500/10 rounded-lg">
-                  <UserCheck className="h-5 w-5 text-green-600" />
+                <div className="p-2 bg-blue-500/10 rounded-lg">
+                  <CreditCard className="h-5 w-5 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Kinesiólogo Responsable</p>
-                  <p className="font-semibold text-lg">{paciente.nombre_kinesiologo}</p>
+                  <p className="text-sm text-muted-foreground">Tipo de Paciente</p>
+                  <p className="font-semibold text-lg capitalize">
+                    {paciente.tipo_paciente === "obra_social" ? "Obra Social" : "Particular"}
+                  </p>
+                  {paciente.tipo_paciente === "obra_social" && paciente.obra_social && (
+                    <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                      <Building className="h-3 w-3" />
+                      {paciente.obra_social}
+                    </p>
+                  )}
                 </div>
               </div>
 
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-500/10 rounded-lg">
-                  <Calendar className="h-5 w-5 text-blue-600" />
+                <div className="p-2 bg-green-500/10 rounded-lg">
+                  <Calendar className="h-5 w-5 text-green-600" />
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Sesiones Programadas</p>
@@ -150,6 +162,32 @@ export default async function PacienteDetalle({ params }: { params: Promise<{ id
           </CardContent>
         </Card>
 
+        {/* Evaluación del Paciente */}
+        <Card className="mb-8 shadow-lg border-muted-foreground/20 overflow-hidden">
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-xl">
+                  <ClipboardList className="h-5 w-5 text-blue-600" />
+                  Evaluación del Paciente
+                </CardTitle>
+                <p className="text-muted-foreground text-sm">
+                  Completa las evaluaciones antes y después de cada sesión de fisioterapia
+                </p>
+              </div>
+              <Link href={`/paciente/${id}/evaluaciones`}>
+                <Button variant="outline" size="sm" className="gap-2 shadow-sm">
+                  <ClipboardList className="h-4 w-4" />
+                  Ver Historial
+                </Button>
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent className="p-6">
+            <EvaluationButton pacienteId={paciente.id} />
+          </CardContent>
+        </Card>
+
         {/* Historial de sesiones */}
         <Card className="shadow-lg border-muted-foreground/20 overflow-hidden">
           <CardHeader>
@@ -165,10 +203,11 @@ export default async function PacienteDetalle({ params }: { params: Promise<{ id
             {sesiones && sesiones.length > 0 ? (
               <div className="space-y-3">
                 {/* Header de las cards */}
-                <div className="hidden md:grid md:grid-cols-4 gap-4 px-4 py-2 bg-muted/30 rounded-lg border border-muted-foreground/10">
+                <div className="hidden md:grid md:grid-cols-5 gap-4 px-4 py-2 bg-muted/30 rounded-lg border border-muted-foreground/10">
                   <div className="font-semibold text-sm text-muted-foreground">Fecha</div>
                   <div className="font-semibold text-sm text-muted-foreground">Hora</div>
                   <div className="font-semibold text-sm text-muted-foreground">Estado</div>
+                  <div className="font-semibold text-sm text-muted-foreground">Promedio</div>
                   <div className="font-semibold text-sm text-muted-foreground">Acciones</div>
                 </div>
 
@@ -180,7 +219,7 @@ export default async function PacienteDetalle({ params }: { params: Promise<{ id
                   >
                     <CardContent className="p-4">
                       {/* Mobile: estructura vertical, Desktop: grid */}
-                      <div className="flex flex-col gap-4 md:grid md:grid-cols-4 md:items-center">
+                      <div className="flex flex-col gap-4 md:grid md:grid-cols-5 md:items-center">
                         {/* Fecha */}
                         <div className="flex items-center md:block gap-2">
                           <span className="text-xs text-muted-foreground font-medium w-20 shrink-0 md:hidden">
@@ -223,12 +262,45 @@ export default async function PacienteDetalle({ params }: { params: Promise<{ id
                           </Badge>
                         </div>
 
+                        {/* Promedio de Evaluación */}
+                        <div className="flex items-center md:block gap-2">
+                          <span className="text-xs text-muted-foreground font-medium w-20 shrink-0 md:hidden">
+                            Promedio
+                          </span>
+                          <div className="flex items-center gap-2">
+                            {sesion.promedioGeneral !== null ? (
+                              <div className="flex items-center gap-1">
+                                <Activity className="h-4 w-4 text-blue-600" />
+                                <span className="text-sm md:text-base font-medium text-blue-600">
+                                  {sesion.promedioGeneral}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-sm md:text-base text-muted-foreground">
+                                Sin evaluación
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
                         {/* Acciones */}
                         <div className="flex items-center md:block gap-2">
                           <span className="text-xs text-muted-foreground font-medium w-20 shrink-0 md:hidden">
                             Acciones
                           </span>
                           <div className="flex gap-2">
+                            {sesion.evaluacionId && (
+                              <Link href={`/paciente/${id}/evaluacion?sesionId=${sesion.id}`}>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="gap-1 shadow-sm"
+                                >
+                                  <ClipboardList className="h-3 w-3" />
+                                  <span className="hidden lg:inline">Ver</span>
+                                </Button>
+                              </Link>
+                            )}
                             <EditSesionDialog sesion={sesion}>
                               <Button
                                 variant="outline"

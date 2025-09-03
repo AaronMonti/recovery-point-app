@@ -20,7 +20,10 @@ import {
   Activity,
   Clock,
   Edit,
-  Info
+  Info,
+  AlertTriangle,
+  CreditCard,
+  Building
 } from "lucide-react";
 
 export default async function Home({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
@@ -95,23 +98,47 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ [
             {/* Grid de pacientes */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {pacientes.map((paciente) => (
-                <Card key={paciente.id} className="group hover:shadow-lg transition-all duration-200 border-muted-foreground/20 overflow-hidden">
+                <Card 
+                  key={paciente.id} 
+                  className={`group hover:shadow-lg transition-all duration-200 border-muted-foreground/20 overflow-hidden ${
+                    paciente.evaluacionPendiente ? 'border-orange-300 bg-orange-50/30' : ''
+                  }`}
+                >
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-xl font-semibold group-hover:text-primary transition-colors">
                         {paciente.nombre_paciente}
                       </CardTitle>
-                      <div className="p-2 bg-muted rounded-full">
-                        <Users className="h-4 w-4 text-muted-foreground" />
+                      <div className="flex items-center gap-2">
+                        {paciente.evaluacionPendiente && (
+                          <div className="p-2 bg-orange-100 rounded-full" title="Evaluación post-sesión pendiente">
+                            <AlertTriangle className="h-4 w-4 text-orange-600" />
+                          </div>
+                        )}
+                        <div className="p-2 bg-muted rounded-full">
+                          <Users className="h-4 w-4 text-muted-foreground" />
+                        </div>
                       </div>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="space-y-3">
-                      <div className="flex items-center gap-2 text-sm">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-muted-foreground">Kinesiólogo:</span>
-                        <span className="font-medium">{paciente.nombre_kinesiologo}</span>
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2 text-sm">
+                          <CreditCard className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-muted-foreground">Tipo:</span>
+                          <span className="font-medium capitalize">
+                            {paciente.tipo_paciente === "obra_social" ? "Obra Social" : "Particular"}
+                          </span>
+                        </div>
+                        
+                        {paciente.tipo_paciente === "obra_social" && paciente.obra_social && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <Building className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-muted-foreground">Obra Social:</span>
+                            <span className="font-medium">{paciente.obra_social}</span>
+                          </div>
+                        )}
                       </div>
 
                       <div className="space-y-3">

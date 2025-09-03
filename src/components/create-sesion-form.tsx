@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { Heart, Smile, Meh, Frown, Save, Calendar, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useFormStatus } from "react-dom";
 
 interface CreateSesionFormProps {
@@ -113,6 +113,27 @@ function SubmitButton() {
 export function CreateSesionForm({ pacienteId }: CreateSesionFormProps) {
   const router = useRouter();
   const [selectedSentimiento, setSelectedSentimiento] = useState<string>("verde");
+  const [currentDateTime, setCurrentDateTime] = useState<string>("");
+
+  // Actualizar la fecha y hora actual cada segundo
+  useEffect(() => {
+    const updateDateTime = () => {
+      const now = new Date();
+      const dia = now.getDate().toString().padStart(2, '0');
+      const mes = (now.getMonth() + 1).toString().padStart(2, '0');
+      const año = now.getFullYear();
+      const horas = now.getHours().toString().padStart(2, '0');
+      const minutos = now.getMinutes().toString().padStart(2, '0');
+      const segundos = now.getSeconds().toString().padStart(2, '0');
+      
+      setCurrentDateTime(`${dia}/${mes}/${año} ${horas}:${minutos}:${segundos}`);
+    };
+
+    updateDateTime(); // Actualizar inmediatamente
+    const interval = setInterval(updateDateTime, 1000); // Actualizar cada segundo
+
+    return () => clearInterval(interval);
+  }, []);
 
   async function handleSubmit(formData: FormData) {
     formData.append("paciente_id", pacienteId);
@@ -122,6 +143,9 @@ export function CreateSesionForm({ pacienteId }: CreateSesionFormProps) {
     if (result.success) {
       toast.success(result.message);
       router.refresh();
+      
+      // Disparar evento para actualizar el estado de evaluaciones
+      window.dispatchEvent(new CustomEvent('evaluationStatusUpdate'));
     } else {
       toast.error(result.message);
     }

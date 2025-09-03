@@ -7,17 +7,27 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { User, UserCheck, Calendar, Save, X, Loader2 } from "lucide-react";
+import { User, UserCheck, Calendar, Save, X, Loader2, Building, CreditCard } from "lucide-react";
 import { useFormStatus } from "react-dom";
+import { useState } from "react";
 
-// Lista de nombres de kinesiólogos
-const kinesiologos = [
-  "Matias Baneiro",
-  "Noé Palacios"
+// Lista de obras sociales disponibles
+const obrasSociales = [
+  "OSDE",
+  "Swiss Medical",
+  "Galeno",
+  "Medicus",
+  "IOMA",
+  "PAMI",
+  "OSECAC",
+  "OSPMI",
+  "Sancor Salud",
+  "Otra"
 ];
 
 function FormFields() {
   const { pending } = useFormStatus();
+  const [tipoPaciente, setTipoPaciente] = useState<string>("");
   
   return (
     <div className="space-y-4">
@@ -37,23 +47,41 @@ function FormFields() {
       </div>
       
       <div className="space-y-2">
-        <Label htmlFor="nombre_kinesiologo" className="text-sm font-medium flex items-center gap-2">
-          <UserCheck className="h-4 w-4 text-green-600" />
-          Nombre del Kinesiólogo
+        <Label htmlFor="tipo_paciente" className="text-sm font-medium flex items-center gap-2">
+          <CreditCard className="h-4 w-4 text-blue-600" />
+          Tipo de Paciente
         </Label>
-        <Select name="nombre_kinesiologo" required disabled={pending}>
+        <Select name="tipo_paciente" required disabled={pending} onValueChange={setTipoPaciente}>
           <SelectTrigger className="!h-12 text-base shadow-sm border-muted-foreground/20 focus:border-primary/50 transition-colors w-full disabled:opacity-50 disabled:cursor-not-allowed">
-            <SelectValue placeholder="Seleccione el kinesiólogo responsable" />
+            <SelectValue placeholder="Seleccione el tipo de paciente" />
           </SelectTrigger>
           <SelectContent className="w-full">
-            {kinesiologos.map((kinesiologo) => (
-              <SelectItem key={kinesiologo} value={kinesiologo}>
-                {kinesiologo}
-              </SelectItem>
-            ))}
+            <SelectItem value="particular">Particular</SelectItem>
+            <SelectItem value="obra_social">Obra Social</SelectItem>
           </SelectContent>
         </Select>
       </div>
+
+      {tipoPaciente === "obra_social" && (
+        <div className="space-y-2">
+          <Label htmlFor="obra_social" className="text-sm font-medium flex items-center gap-2">
+            <Building className="h-4 w-4 text-green-600" />
+            Obra Social
+          </Label>
+          <Select name="obra_social" required disabled={pending}>
+            <SelectTrigger className="!h-12 text-base shadow-sm border-muted-foreground/20 focus:border-primary/50 transition-colors w-full disabled:opacity-50 disabled:cursor-not-allowed">
+              <SelectValue placeholder="Seleccione la obra social" />
+            </SelectTrigger>
+            <SelectContent className="w-full">
+              {obrasSociales.map((obraSocial) => (
+                <SelectItem key={obraSocial} value={obraSocial}>
+                  {obraSocial}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
       
       <div className="space-y-2">
         <Label htmlFor="sesiones_totales" className="text-sm font-medium flex items-center gap-2">

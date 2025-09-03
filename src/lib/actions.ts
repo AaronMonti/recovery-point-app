@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "./db";
-import { pacientes, sesiones_diarias } from "./schema";
-import { eq, and, gte, lte, inArray, sql } from "drizzle-orm";
+import { pacientes, sesiones_diarias, evaluaciones } from "./schema";
+import { eq, and, gte, lte, inArray, sql, desc } from "drizzle-orm";
 
 export async function getPacientes(startDate?: string, endDate?: string) {
   try {
@@ -120,7 +120,8 @@ export async function getPacientesConBusqueda(
       const query = searchQuery.toLowerCase().trim();
       pacientesData = pacientesData.filter(paciente => 
         paciente.nombre_paciente.toLowerCase().includes(query) ||
-        paciente.nombre_kinesiologo.toLowerCase().includes(query)
+        paciente.tipo_paciente.toLowerCase().includes(query) ||
+        (paciente.obra_social && paciente.obra_social.toLowerCase().includes(query))
       );
     }
 
@@ -131,7 +132,7 @@ export async function getPacientesConBusqueda(
     const endIndex = startIndex + pageSize;
     const pacientesPaginados = pacientesData.slice(startIndex, endIndex);
 
-    // Obtener conteo de sesiones para cada paciente
+    // Obtener conteo de sesiones y estado de evaluación para cada paciente
     const pacientesConSesiones = await Promise.all(
       pacientesPaginados.map(async (paciente) => {
         const sesionesCount = await db
@@ -140,9 +141,44 @@ export async function getPacientesConBusqueda(
           .where(eq(sesiones_diarias.paciente_id, paciente.id))
           .get();
         
+        // Obtener la última sesión del paciente
+        const ultimaSesion = await db
+          .select()
+          .from(sesiones_diarias)
+          .where(eq(sesiones_diarias.paciente_id, paciente.id))
+          .orderBy(desc(sesiones_diarias.fecha), desc(sesiones_diarias.hora))
+          .get();
+        
+        // Verificar estado de evaluación
+        let evaluacionPendiente = false;
+        if (ultimaSesion) {
+          const evaluacionesData = await db
+            .select()
+            .from(evaluaciones)
+            .where(eq(evaluaciones.sesionId, ultimaSesion.id))
+            .all();
+          
+          // Verificar si falta la evaluación post-sesión
+          evaluacionesData.forEach((evaluacion: any) => {
+            try {
+              const respuestas = JSON.parse(evaluacion.respuestasComprimidas);
+              const tieneEvaluacionPre = respuestas.some((r: any) => r.questionId.includes('_pre'));
+              const tieneEvaluacionPost = respuestas.some((r: any) => r.questionId.includes('_post'));
+              
+              // Si tiene pre-evaluación pero no post-evaluación, está pendiente
+              if (tieneEvaluacionPre && !tieneEvaluacionPost) {
+                evaluacionPendiente = true;
+              }
+            } catch (error) {
+              console.error('Error parsing evaluation:', error);
+            }
+          });
+        }
+        
         return {
           ...paciente,
-          sesiones_completadas: sesionesCount?.count || 0
+          sesiones_completadas: sesionesCount?.count || 0,
+          evaluacionPendiente
         };
       })
     );
@@ -160,10 +196,14 @@ export async function getPacientesConBusqueda(
 
 export async function createPaciente(data: FormData) {
   try {
+    const tipoPaciente = data.get("tipo_paciente") as string;
+    const obraSocial = tipoPaciente === "obra_social" ? data.get("obra_social") as string : null;
+    
     const newPaciente = {
       id: crypto.randomUUID(),
       nombre_paciente: data.get("nombre_paciente") as string,
-      nombre_kinesiologo: data.get("nombre_kinesiologo") as string,
+      tipo_paciente: tipoPaciente as "particular" | "obra_social",
+      obra_social: obraSocial,
       sesiones_totales: Number(data.get("sesiones_totales")),
       created_at: new Date().toISOString(),
     };
@@ -179,9 +219,13 @@ export async function createPaciente(data: FormData) {
 
 export const updatePatient = async (id: string, data: FormData) => {
   try {
+    const tipoPaciente = data.get("tipo_paciente") as string;
+    const obraSocial = tipoPaciente === "obra_social" ? data.get("obra_social") as string : null;
+    
     const updatedPaciente = {
       nombre_paciente: data.get("nombre_paciente") as string,
-      nombre_kinesiologo: data.get("nombre_kinesiologo") as string,
+      tipo_paciente: tipoPaciente as "particular" | "obra_social",
+      obra_social: obraSocial,
       sesiones_totales: Number(data.get("sesiones_totales")),
     };
 
@@ -228,11 +272,47 @@ export async function getPaciente(id: string) {
 
 export async function getSesionesDiarias(paciente_id: string) {
   try {
-    return db
+    const sesiones = await db
       .select()
       .from(sesiones_diarias)
       .where(eq(sesiones_diarias.paciente_id, paciente_id))
       .all();
+
+    // Obtener evaluaciones para cada sesión
+    const sesionesConEvaluaciones = await Promise.all(
+      sesiones.map(async (sesion) => {
+        const evaluacion = await db
+          .select({
+            id: evaluaciones.id,
+            promediosComprimidos: evaluaciones.promediosComprimidos,
+          })
+          .from(evaluaciones)
+          .where(eq(evaluaciones.sesionId, sesion.id))
+          .get();
+
+        let promedioGeneral = null;
+        if (evaluacion?.promediosComprimidos) {
+          try {
+            const promedios = JSON.parse(evaluacion.promediosComprimidos);
+            // Calcular promedio general de todos los promedios
+            const valores = Object.values(promedios).filter(val => typeof val === 'number');
+            if (valores.length > 0) {
+              promedioGeneral = valores.reduce((sum: number, val: any) => sum + val, 0) / valores.length;
+            }
+          } catch (error) {
+            console.error('Error parseando promedios:', error);
+          }
+        }
+
+        return {
+          ...sesion,
+          evaluacionId: evaluacion?.id || null,
+          promedioGeneral: promedioGeneral ? Math.round(promedioGeneral * 100) / 100 : null,
+        };
+      })
+    );
+
+    return sesionesConEvaluaciones;
   } catch (error) {
     console.error(
       `Error fetching sessions for patient with id ${paciente_id}:`,
@@ -246,24 +326,37 @@ export async function createSesionDiaria(data: FormData) {
   try {
     const paciente_id = data.get("paciente_id") as string;
 
+    // Crear fecha y hora usando la zona horaria local
+    // Este enfoque es más robusto para iOS Safari
     const now = new Date();
-    const fecha = `${now.getDate().toString().padStart(2, '0')}-${(now.getMonth() + 1).toString().padStart(2, '0')}-${now.getFullYear()}`;
+    
+    // Formatear fecha usando métodos que respetan la zona horaria local
+    const dia = now.getDate().toString().padStart(2, '0');
+    const mes = (now.getMonth() + 1).toString().padStart(2, '0');
+    const año = now.getFullYear();
+    const fecha = `${dia}-${mes}-${año}`;
+    
+    // Formatear hora usando métodos que respetan la zona horaria local
+    const horas = now.getHours().toString().padStart(2, '0');
+    const minutos = now.getMinutes().toString().padStart(2, '0');
+    const hora = `${horas}:${minutos}`;
     
     const newSesionDiaria = {
       id: crypto.randomUUID(),
       paciente_id,
       fecha: fecha,
-      hora: new Date().toLocaleTimeString('es-ES', { 
-        hour: '2-digit', 
-        minute: '2-digit',
-        hour12: false 
-      }),
+      hora: hora,
       sentimiento: data.get("sentimiento") as "verde" | "amarillo" | "rojo",
     };
 
     await db.insert(sesiones_diarias).values(newSesionDiaria);
 
+    // Revalidar la página del paciente para actualizar el estado
     revalidatePath(`/paciente/${paciente_id}`);
+    
+    // También revalidar la página principal por si acaso
+    revalidatePath("/");
+    
     return { success: true, message: "Sesión creada con éxito." };
   } catch (error) {
     console.error("Error creating session:", error);
@@ -319,7 +412,8 @@ export async function getSesionesPorRangoFechas(startDate: string, endDate: stri
         sentimiento: sesiones_diarias.sentimiento,
         paciente_id: sesiones_diarias.paciente_id,
         nombre_paciente: pacientes.nombre_paciente,
-        nombre_kinesiologo: pacientes.nombre_kinesiologo,
+        tipo_paciente: pacientes.tipo_paciente,
+        obra_social: pacientes.obra_social,
       })
       .from(sesiones_diarias)
       .innerJoin(pacientes, eq(sesiones_diarias.paciente_id, pacientes.id))
@@ -372,6 +466,216 @@ export async function getSesionesPorRangoFechas(startDate: string, endDate: stri
       totalSesiones: 0, 
       diasConSesiones: 0,
       error: "Error al obtener las sesiones" 
+    };
+  }
+}
+
+// Funciones para manejar evaluaciones
+export async function getUltimaSesion(pacienteId: string) {
+  try {
+    console.log('Buscando última sesión para paciente:', pacienteId);
+    
+    const ultimaSesion = await db
+      .select()
+      .from(sesiones_diarias)
+      .where(eq(sesiones_diarias.paciente_id, pacienteId))
+      .orderBy(desc(sesiones_diarias.fecha), desc(sesiones_diarias.hora))
+      .get();
+    
+    console.log('Última sesión encontrada:', ultimaSesion);
+    return ultimaSesion;
+  } catch (error) {
+    console.error("Error obteniendo última sesión:", error);
+    return undefined;
+  }
+}
+
+export async function getEvaluacionesPorSesion(sesionId: string) {
+  try {
+    console.log('Buscando evaluaciones para sesión:', sesionId);
+    
+    const evaluacionesData = await db
+      .select()
+      .from(evaluaciones)
+      .where(eq(evaluaciones.sesionId, sesionId))
+      .all();
+    
+    console.log('Evaluaciones encontradas:', evaluacionesData.length);
+    return evaluacionesData;
+  } catch (error) {
+    console.error("Error obteniendo evaluaciones:", error);
+    return [];
+  }
+}
+
+export async function createEvaluacion(data: {
+  pacienteId: string;
+  sesionId: string;
+  fecha: string;
+  respuestasComprimidas: string;
+  promediosComprimidos: string;
+}) {
+  try {
+    // Verificar si ya existe una evaluación para esta sesión
+    const evaluacionExistente = await db
+      .select()
+      .from(evaluaciones)
+      .where(eq(evaluaciones.sesionId, data.sesionId))
+      .get();
+
+    if (evaluacionExistente) {
+      // Actualizar evaluación existente
+      console.log('Actualizando evaluación existente:', evaluacionExistente.id);
+      
+      // Parsear respuestas existentes
+      let respuestasExistentes: any[] = [];
+      try {
+        respuestasExistentes = JSON.parse(evaluacionExistente.respuestasComprimidas);
+      } catch (error) {
+        console.warn('Error parseando respuestas existentes, iniciando array vacío');
+        respuestasExistentes = [];
+      }
+
+      // Parsear nuevas respuestas
+      const nuevasRespuestas = JSON.parse(data.respuestasComprimidas);
+      
+      // Combinar respuestas (evitar duplicados)
+      const respuestasCombinadas = [...respuestasExistentes];
+      nuevasRespuestas.forEach((nuevaRespuesta: any) => {
+        const index = respuestasCombinadas.findIndex(r => r.questionId === nuevaRespuesta.questionId);
+        if (index >= 0) {
+          respuestasCombinadas[index] = nuevaRespuesta;
+        } else {
+          respuestasCombinadas.push(nuevaRespuesta);
+        }
+      });
+
+      // Calcular promedios combinados
+      const promediosExistentes = JSON.parse(evaluacionExistente.promediosComprimidos || '{}');
+      const nuevosPromedios = JSON.parse(data.promediosComprimidos);
+      const promediosCombinados = { ...promediosExistentes, ...nuevosPromedios };
+
+      // Actualizar la evaluación
+      await db
+        .update(evaluaciones)
+        .set({
+          respuestasComprimidas: JSON.stringify(respuestasCombinadas),
+          promediosComprimidos: JSON.stringify(promediosCombinados),
+          fecha: data.fecha
+        })
+        .where(eq(evaluaciones.id, evaluacionExistente.id));
+
+      revalidatePath(`/paciente/${data.pacienteId}`);
+      return { success: true, message: "Evaluación actualizada con éxito." };
+    } else {
+      // Crear nueva evaluación
+      console.log('Creando nueva evaluación');
+      const newEvaluacion = {
+        id: crypto.randomUUID(),
+        pacienteId: data.pacienteId,
+        sesionId: data.sesionId,
+        fecha: data.fecha,
+        respuestasComprimidas: data.respuestasComprimidas,
+        promediosComprimidos: data.promediosComprimidos,
+        createdAt: new Date().toISOString(),
+      };
+
+      await db.insert(evaluaciones).values(newEvaluacion);
+      revalidatePath(`/paciente/${data.pacienteId}`);
+      return { success: true, message: "Evaluación guardada con éxito." };
+    }
+  } catch (error) {
+    console.error("Error creando/actualizando evaluación:", error);
+    return { success: false, message: "Error al guardar la evaluación." };
+  }
+}
+
+export async function getEvaluacionesPorPaciente(pacienteId: string) {
+  try {
+    const evaluacionesData = await db
+      .select({
+        id: evaluaciones.id,
+        fecha: evaluaciones.fecha,
+        respuestasComprimidas: evaluaciones.respuestasComprimidas,
+        promediosComprimidos: evaluaciones.promediosComprimidos,
+        createdAt: evaluaciones.createdAt,
+        sesionId: evaluaciones.sesionId,
+        sesionFecha: sesiones_diarias.fecha,
+        sesionHora: sesiones_diarias.hora,
+      })
+      .from(evaluaciones)
+      .innerJoin(sesiones_diarias, eq(evaluaciones.sesionId, sesiones_diarias.id))
+      .where(eq(evaluaciones.pacienteId, pacienteId))
+      .orderBy(desc(evaluaciones.createdAt))
+      .all();
+    
+    return evaluacionesData;
+  } catch (error) {
+    console.error("Error obteniendo evaluaciones del paciente:", error);
+    return [];
+  }
+}
+
+// Función para limpiar evaluaciones corruptas o vacías
+export async function limpiarEvaluacionesCorruptas() {
+  try {
+    console.log('Limpiando evaluaciones corruptas...');
+    
+    // Obtener todas las evaluaciones
+    const todasEvaluaciones = await db
+      .select()
+      .from(evaluaciones)
+      .all();
+    
+    console.log('Total de evaluaciones encontradas:', todasEvaluaciones.length);
+    
+    const evaluacionesCorruptas: string[] = [];
+    
+    // Identificar evaluaciones corruptas o vacías
+    todasEvaluaciones.forEach(evaluacion => {
+      try {
+        // Verificar si los datos son JSON válido
+        if (!evaluacion.respuestasComprimidas || 
+            typeof evaluacion.respuestasComprimidas !== 'string' ||
+            !evaluacion.respuestasComprimidas.startsWith('[') && !evaluacion.respuestasComprimidas.startsWith('{')) {
+          evaluacionesCorruptas.push(evaluacion.id);
+          console.log('Evaluación corrupta encontrada:', evaluacion.id, 'Datos:', evaluacion.respuestasComprimidas);
+        } else {
+          // Intentar parsear para verificar que sea JSON válido y no esté vacío
+          const respuestas = JSON.parse(evaluacion.respuestasComprimidas);
+          if (!Array.isArray(respuestas) || respuestas.length === 0) {
+            evaluacionesCorruptas.push(evaluacion.id);
+            console.log('Evaluación vacía encontrada:', evaluacion.id);
+          }
+        }
+      } catch (error) {
+        evaluacionesCorruptas.push(evaluacion.id);
+        console.log('Evaluación corrupta encontrada:', evaluacion.id, 'Error:', error);
+      }
+    });
+    
+    console.log('Evaluaciones corruptas encontradas:', evaluacionesCorruptas.length);
+    
+    // Eliminar evaluaciones corruptas
+    if (evaluacionesCorruptas.length > 0) {
+      await db
+        .delete(evaluaciones)
+        .where(inArray(evaluaciones.id, evaluacionesCorruptas));
+      
+      console.log('Evaluaciones corruptas eliminadas:', evaluacionesCorruptas.length);
+    }
+    
+    return {
+      success: true,
+      totalEvaluaciones: todasEvaluaciones.length,
+      evaluacionesCorruptas: evaluacionesCorruptas.length,
+      eliminadas: evaluacionesCorruptas
+    };
+  } catch (error) {
+    console.error('Error limpiando evaluaciones corruptas:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Error desconocido'
     };
   }
 }
