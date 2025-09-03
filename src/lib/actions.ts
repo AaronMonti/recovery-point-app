@@ -246,10 +246,13 @@ export const updatePatient = async (id: string, data: FormData) => {
 
 export const deletePatient = async (id: string) => {
   try {
-    // Primero eliminar todas las sesiones relacionadas al paciente
+    // Primero eliminar todas las evaluaciones relacionadas al paciente
+    await db.delete(evaluaciones).where(eq(evaluaciones.pacienteId, id));
+    
+    // Luego eliminar todas las sesiones relacionadas al paciente
     await db.delete(sesiones_diarias).where(eq(sesiones_diarias.paciente_id, id));
     
-    // Luego eliminar el paciente
+    // Finalmente eliminar el paciente
     await db.delete(pacientes).where(eq(pacientes.id, id));
     
     revalidatePath("/");

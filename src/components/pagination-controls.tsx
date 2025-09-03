@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useCallback, useMemo } from 'react';
 import {
   Pagination,
   PaginationContent,
@@ -20,20 +21,22 @@ export function PaginationControls({ currentPage, totalPages }: PaginationContro
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const createPageURL = (pageNumber: number) => {
-    const params = new URLSearchParams(searchParams);
+  // Memoizar la función createPageURL para evitar re-creaciones
+  const createPageURL = useCallback((pageNumber: number) => {
+    const params = new URLSearchParams(searchParams.toString());
     params.set('page', pageNumber.toString());
     return `/?${params.toString()}`;
-  };
+  }, [searchParams]);
 
-  const handlePageChange = (pageNumber: number) => {
+  // Memoizar handlePageChange para evitar re-creaciones
+  const handlePageChange = useCallback((pageNumber: number) => {
     if (pageNumber >= 1 && pageNumber <= totalPages) {
-      router.push(createPageURL(pageNumber));
+      router.push(createPageURL(pageNumber), { scroll: false });
     }
-  };
+  }, [totalPages, router, createPageURL]);
 
-  // Generar números de página a mostrar
-  const getPageNumbers = () => {
+  // Memoizar los números de página para evitar recálculos innecesarios
+  const pageNumbers = useMemo(() => {
     const pages = [];
     const maxVisiblePages = 5;
     
@@ -71,7 +74,7 @@ export function PaginationControls({ currentPage, totalPages }: PaginationContro
     }
     
     return pages;
-  };
+  }, [currentPage, totalPages]);
 
   if (totalPages <= 1) {
     return null;
@@ -91,7 +94,7 @@ export function PaginationControls({ currentPage, totalPages }: PaginationContro
           />
         </PaginationItem>
 
-        {getPageNumbers().map((page, index) => (
+        {pageNumbers.map((page: number | string, index: number) => (
           <PaginationItem key={index}>
             {page === 'ellipsis' ? (
               <PaginationEllipsis />
