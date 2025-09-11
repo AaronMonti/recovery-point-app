@@ -73,7 +73,7 @@ export default async function PacientesPage({ searchParams }: { searchParams: Pr
         <div className="mb-10">
           <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
             <SearchBar />
-            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+            <div className="flex flex-col lg:flex-row gap-4 items-start sm:items-start">
               <Suspense fallback={
                 <div className="flex items-center gap-2 text-muted-foreground h-10">
                   <Calendar className="h-4 w-4 animate-spin" />

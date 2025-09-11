@@ -64,7 +64,7 @@ export function CategoryFilter() {
 
   return (
     <div className="flex items-center gap-2 h-10">
-      <Tag className="h-4 w-4 text-muted-foreground" />
+      
       <Select value={selectedCategory || 'todas'} onValueChange={handleCategoryChange}>
         <SelectTrigger className="w-[200px] h-10">
           <SelectValue placeholder="Filtrar por categoría" />
@@ -78,6 +78,7 @@ export function CategoryFilter() {
           ))}
         </SelectContent>
       </Select>
+      <Tag className="h-4 w-4 text-muted-foreground" />
     </div>
   );
 }
