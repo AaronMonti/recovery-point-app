@@ -53,7 +53,7 @@ export function DatePicker({
   }
 
   return (
-    <div className={cn("flex flex-col gap-3", className)}>
+    <div className={cn(label ? "flex flex-col gap-3" : "flex", className)}>
       {label && (
         <Label htmlFor="date-picker" className="px-1">
           {label}
@@ -69,7 +69,8 @@ export function DatePicker({
             data-empty={!date}
             className={cn(
               "w-full justify-between font-normal",
-              "data-[empty=true]:text-muted-foreground"
+              "data-[empty=true]:text-muted-foreground",
+              !label && "h-10"
             )}
           >
             <div className="flex items-center gap-2">

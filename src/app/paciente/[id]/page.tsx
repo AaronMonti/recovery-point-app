@@ -36,7 +36,7 @@ export default async function PacienteDetalle({ params }: { params: Promise<{ id
       <main className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
         <div className="container mx-auto py-8 px-4 md:px-6 text-center">
           <h1 className="text-2xl font-bold mb-4">Paciente no encontrado</h1>
-          <Link href="/">
+          <Link href="/pacientes">
             <Button variant="outline" className="mt-4">Volver al listado</Button>
           </Link>
         </div>
@@ -52,7 +52,7 @@ export default async function PacienteDetalle({ params }: { params: Promise<{ id
       <div className="container mx-auto py-8 px-4 md:px-6">
         {/* Header con navegación */}
         <div className="flex items-center gap-4 mb-8">
-          <Link href="/">
+          <Link href="/pacientes">
             <Button variant="outline" size="sm" className="gap-2 shadow-sm">
               <ArrowLeft className="h-4 w-4" />
               Volver

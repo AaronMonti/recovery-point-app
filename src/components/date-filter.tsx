@@ -69,28 +69,28 @@ export function DateFilter() {
   }, [searchParams, router, startTransition]);
 
   return (
-    <div className="flex flex-col md:flex-row gap-4 items-end">
+    <div className="flex flex-col md:flex-row gap-4 items-center">
       <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
         <DatePicker
           date={startDate}
           onDateChange={setStartDate}
-          label="Fecha de inicio"
-          placeholder="Seleccionar fecha inicio"
+          placeholder="Fecha inicio"
           maxDate={endDate}
+          className="h-10"
         />
         <DatePicker
           date={endDate}
           onDateChange={setEndDate}
-          label="Fecha de fin"
-          placeholder="Seleccionar fecha fin"
+          placeholder="Fecha fin"
           minDate={startDate}
+          className="h-10"
         />
       </div>
-      <div className="flex gap-2">
+      <div className="flex gap-2 h-10">
         <Button 
           onClick={applyFilter} 
           disabled={!startDate || !endDate || isPending}
-          className="min-w-[120px]"
+          className="min-w-[120px] h-10"
         >
           {isPending ? 'Aplicando...' : 'Aplicar Filtro'}
         </Button>
@@ -98,7 +98,7 @@ export function DateFilter() {
           variant="outline" 
           onClick={clearFilter}
           disabled={isPending || (!startDateParam && !endDateParam)}
-          className="min-w-[80px]"
+          className="min-w-[80px] h-10"
         >
           Limpiar
         </Button>

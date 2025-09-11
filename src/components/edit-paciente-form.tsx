@@ -1,36 +1,27 @@
 'use client';
 
-import { updatePatient } from "@/lib/actions";
+import { updatePatient, getCategorias, getObrasSociales } from "@/lib/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { Save, X, User, UserCheck, Calendar, Loader2, Building, CreditCard } from "lucide-react";
+import { Save, X, User, UserCheck, Calendar, Loader2, Building, CreditCard, Tag, FileText } from "lucide-react";
 import { useFormStatus } from "react-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-// Lista de obras sociales disponibles
-const obrasSociales = [
-  "OSDE",
-  "Swiss Medical",
-  "Galeno",
-  "Medicus",
-  "IOMA",
-  "PAMI",
-  "OSECAC",
-  "OSPMI",
-  "Sancor Salud",
-  "Otra"
-];
+// Las obras sociales ahora se cargan desde la base de datos
 
 interface EditPacienteFormProps {
   paciente: {
     id: string;
     nombre_paciente: string;
     tipo_paciente: "particular" | "obra_social";
-    obra_social?: string | null;
+    obra_social_id?: string | null;
+    categoria_id?: string | null;
+    nota_lesion?: string | null;
     sesiones_totales: number;
   };
 }
@@ -38,6 +29,26 @@ interface EditPacienteFormProps {
 function FormFields({ paciente }: { paciente: EditPacienteFormProps['paciente'] }) {
   const { pending } = useFormStatus();
   const [tipoPaciente, setTipoPaciente] = useState<string>(paciente.tipo_paciente);
+  const [categorias, setCategorias] = useState<Array<{id: string, nombre: string, descripcion?: string}>>([]);
+  const [obrasSociales, setObrasSociales] = useState<Array<{id: string, nombre: string, descripcion?: string}>>([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const [categoriasResult, obrasSocialesResult] = await Promise.all([
+        getCategorias(),
+        getObrasSociales()
+      ]);
+      
+      if (categoriasResult.success && categoriasResult.data) {
+        setCategorias(categoriasResult.data);
+      }
+      
+      if (obrasSocialesResult.success && obrasSocialesResult.data) {
+        setObrasSociales(obrasSocialesResult.data);
+      }
+    };
+    fetchData();
+  }, []);
   
   return (
     <div className="space-y-4">
@@ -73,20 +84,56 @@ function FormFields({ paciente }: { paciente: EditPacienteFormProps['paciente'] 
         </Select>
       </div>
 
+      <div className="space-y-2">
+        <Label htmlFor="categoria_id" className="text-sm font-medium flex items-center gap-2">
+          <Tag className="h-4 w-4 text-purple-600" />
+          Categoría
+        </Label>
+        <Select name="categoria_id" disabled={pending} defaultValue={paciente.categoria_id || "sin-categoria"}>
+          <SelectTrigger className="!h-12 text-base shadow-sm border-muted-foreground/20 focus:border-primary/50 transition-colors w-full disabled:opacity-50 disabled:cursor-not-allowed">
+            <SelectValue placeholder="Seleccione una categoría (opcional)" />
+          </SelectTrigger>
+          <SelectContent className="w-full">
+            <SelectItem value="sin-categoria">Sin categoría</SelectItem>
+            {categorias.map((categoria) => (
+              <SelectItem key={categoria.id} value={categoria.id}>
+                {categoria.nombre}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="nota_lesion" className="text-sm font-medium flex items-center gap-2">
+          <FileText className="h-4 w-4 text-orange-600" />
+          Nota sobre la Lesión
+        </Label>
+        <Textarea
+          id="nota_lesion"
+          name="nota_lesion"
+          disabled={pending}
+          defaultValue={paciente.nota_lesion || ""}
+          placeholder="Describa el tipo de lesión, síntomas, tratamiento previo, etc. (opcional)"
+          className="min-h-[80px] text-base shadow-sm border-muted-foreground/20 focus:border-primary/50 transition-colors w-full disabled:opacity-50 disabled:cursor-not-allowed resize-none"
+        />
+      </div>
+
       {tipoPaciente === "obra_social" && (
         <div className="space-y-2">
-          <Label htmlFor="obra_social" className="text-sm font-medium flex items-center gap-2">
+          <Label htmlFor="obra_social_id" className="text-sm font-medium flex items-center gap-2">
             <Building className="h-4 w-4 text-green-600" />
             Obra Social
           </Label>
-          <Select name="obra_social" required disabled={pending} defaultValue={paciente.obra_social || ""}>
+          <Select name="obra_social_id" required disabled={pending} defaultValue={paciente.obra_social_id || ""}>
             <SelectTrigger className="!h-12 text-base shadow-sm border-muted-foreground/20 focus:border-primary/50 transition-colors w-full disabled:opacity-50 disabled:cursor-not-allowed">
               <SelectValue placeholder="Seleccione la obra social" />
             </SelectTrigger>
             <SelectContent className="w-full">
+              <SelectItem value="sin-obra-social">Sin obra social</SelectItem>
               {obrasSociales.map((obraSocial) => (
-                <SelectItem key={obraSocial} value={obraSocial}>
-                  {obraSocial}
+                <SelectItem key={obraSocial.id} value={obraSocial.id}>
+                  {obraSocial.nombre}
                 </SelectItem>
               ))}
             </SelectContent>

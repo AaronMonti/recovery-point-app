@@ -25,7 +25,7 @@ export function PaginationControls({ currentPage, totalPages }: PaginationContro
   const createPageURL = useCallback((pageNumber: number) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set('page', pageNumber.toString());
-    return `/?${params.toString()}`;
+    return `/pacientes?${params.toString()}`;
   }, [searchParams]);
 
   // Memoizar handlePageChange para evitar re-creaciones

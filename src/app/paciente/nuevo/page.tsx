@@ -10,7 +10,7 @@ export default function NuevoPaciente() {
       <div className="container mx-auto py-8 px-4 md:px-6">
         {/* Header con navegación */}
         <div className="flex items-center gap-4 mb-8">
-          <Link href="/">
+          <Link href="/pacientes">
             <Button variant="outline" size="sm" className="gap-2 shadow-sm">
               <ArrowLeft className="h-4 w-4" />
               Volver

@@ -30,22 +30,22 @@ const preQuestions: Question[] = [
   {
     id: "stress_pre",
     text: "¿Cuán estresado estás hoy?",
-    description: "0 = Sin estrés, 10 = Extremadamente estresado"
+    description: "1 = Muy poco estresado, 10 = Extremadamente estresado"
   },
   {
     id: "sueno_pre",
     text: "¿Cómo dormiste anoche?",
-    description: "0 = Muy mal, 10 = Excelente"
+    description: "1 = Muy mal, 10 = Excelente"
   },
   {
     id: "fatiga_pre",
     text: "¿Qué tan fatigado estás hoy?",
-    description: "0 = Sin fatiga, 10 = Extremadamente fatigado"
+    description: "1 = Muy poca fatiga, 10 = Extremadamente fatigado"
   },
   {
     id: "dolor_muscular_pre",
     text: "¿Cuánto te duelen los músculos?",
-    description: "0 = Sin dolor, 10 = Dolor extremo"
+    description: "1 = Muy poco dolor, 10 = Dolor extremo"
   }
 ]
 
@@ -53,17 +53,12 @@ const postQuestions: Question[] = [
   {
     id: "percepcion_esfuerzo_post",
     text: "¿Qué tan intensa sentiste la sesión de hoy?",
-    description: "0 = Muy suave, 10 = Extremadamente intensa"
+    description: "1 = Muy suave, 10 = Extremadamente intensa"
   },
   {
     id: "eva_post",
     text: "¿Con cuánto dolor terminaste?",
-    description: "0 = Sin dolor, 10 = Dolor extremo"
-  },
-  {
-    id: "minutos_sesion_post",
-    text: "Minutos de sesión:",
-    description: "Ingresa la duración de la sesión en minutos"
+    description: "1 = Muy poco dolor, 10 = Dolor extremo"
   }
 ]
 
@@ -118,9 +113,6 @@ export function PatientEvaluationForm({ pacienteId, pacienteNombre, evaluationTy
 
   const getCurrentResponse = () => {
     const existingResponse = responses.find(r => r.questionId === questions[currentStep].id);
-    if (questions[currentStep].id === 'minutos_sesion_post') {
-      return existingResponse?.value ?? 0;
-    }
     return existingResponse?.value ?? 5;
   }
 
@@ -150,15 +142,7 @@ export function PatientEvaluationForm({ pacienteId, pacienteNombre, evaluationTy
   }
 
   const calcularPromedios = (respuestasParaCalcular: EvaluationResponse[] = responses) => {
-    const promedios = {
-      stress: 0,
-      sueno: 0,
-      fatiga: 0,
-      dolorMuscular: 0,
-      percepcionEsfuerzo: 0,
-      eva: 0,
-      minutosSesion: 0
-    }
+    const promedios: { [key: string]: number } = {}
 
     respuestasParaCalcular.forEach(response => {
       if (response.questionId.includes('stress')) {
@@ -173,8 +157,6 @@ export function PatientEvaluationForm({ pacienteId, pacienteNombre, evaluationTy
         promedios.percepcionEsfuerzo = response.value
       } else if (response.questionId.includes('eva')) {
         promedios.eva = response.value
-      } else if (response.questionId.includes('minutos_sesion')) {
-        promedios.minutosSesion = response.value
       }
     })
 
@@ -190,9 +172,6 @@ export function PatientEvaluationForm({ pacienteId, pacienteNombre, evaluationTy
     // Asegurar que todas las preguntas tengan respuesta
     const respuestasCompletas = questions.map(question => {
       const respuestaExistente = responses.find(r => r.questionId === question.id);
-      if (question.id === 'minutos_sesion_post') {
-        return respuestaExistente || { questionId: question.id, value: 0 };
-      }
       return respuestaExistente || { questionId: question.id, value: 5 };
     });
 
@@ -201,7 +180,49 @@ export function PatientEvaluationForm({ pacienteId, pacienteNombre, evaluationTy
     try {
       const fecha = new Date().toISOString().split('T')[0]
       const respuestasComprimidas = JSON.stringify(respuestasCompletas)
-      const promediosComprimidos = JSON.stringify(calcularPromedios(respuestasCompletas))
+      
+      let promediosComprimidos: string
+      
+      // Si es pre-sesión, agregar timestamp de inicio
+      if (evaluationType === 'pre') {
+        const inicioSesion = new Date().toISOString()
+        const promediosConInicio = {
+          ...calcularPromedios(respuestasCompletas),
+          inicioSesion: inicioSesion
+        }
+        promediosComprimidos = JSON.stringify(promediosConInicio)
+      } else {
+        // Si es post-sesión, calcular duración automáticamente
+        const evaluaciones = await getEvaluacionesPorSesion(ultimaSesion.id)
+        let inicioSesion: string | null = null
+        
+        // Buscar el timestamp de inicio en la evaluación pre
+        evaluaciones.forEach(evaluacion => {
+          try {
+            const promedios = JSON.parse(evaluacion.promediosComprimidos)
+            if (promedios.inicioSesion) {
+              inicioSesion = promedios.inicioSesion
+            }
+          } catch (error) {
+            console.error("Error parsing promedios:", error)
+          }
+        })
+        
+        const finSesion = new Date()
+        let minutosSesion = 0
+        
+        if (inicioSesion) {
+          const inicio = new Date(inicioSesion)
+          const duracionMs = finSesion.getTime() - inicio.getTime()
+          minutosSesion = Math.round(duracionMs / (1000 * 60)) // Convertir a minutos
+        }
+        
+        const promediosConDuracion = {
+          ...calcularPromedios(respuestasCompletas),
+          minutosSesion: minutosSesion
+        }
+        promediosComprimidos = JSON.stringify(promediosConDuracion)
+      }
 
       const result = await createEvaluacion({
         pacienteId,
@@ -213,8 +234,12 @@ export function PatientEvaluationForm({ pacienteId, pacienteNombre, evaluationTy
 
       if (result.success) {
         toast.success(result.message)
-        // Redirigir de vuelta a los detalles del paciente
-        window.location.href = `/paciente/${pacienteId}`
+        
+        // Mostrar resultados inmediatamente después de cada evaluación
+        toast.success("Mostrando resultados de la evaluación...")
+        setTimeout(() => {
+          window.location.href = `/paciente/${pacienteId}/evaluacion?sesionId=${ultimaSesion.id}`
+        }, 1500)
       } else {
         toast.error(result.message)
       }
@@ -310,54 +335,25 @@ export function PatientEvaluationForm({ pacienteId, pacienteNombre, evaluationTy
         <CardContent className="space-y-8">
           {/* Slider Section */}
           <div className="space-y-6">
-            {currentQuestion.id === 'minutos_sesion_post' ? (
-              // Input especial para minutos de sesión
-              <div className="space-y-4">
-                <div className="text-center">
-                  <div className="text-4xl font-bold text-primary mb-2">
-                    {getCurrentResponse()} minutos
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Ingresa la duración de la sesión
-                  </p>
-                </div>
-                
-                <div className="flex justify-center">
-                  <input
-                    type="number"
-                    min="1"
-                    max="300"
-                    value={getCurrentResponse()}
-                    onChange={(e) => updateResponse(parseInt(e.target.value) || 0)}
-                    className="w-32 text-center text-2xl font-bold border-2 border-primary/20 rounded-lg px-4 py-2 focus:outline-none focus:border-primary"
-                    placeholder="0"
-                  />
-                </div>
+            <div className="text-center">
+              <div className="text-4xl font-bold text-primary mb-2">
+                {getCurrentResponse()}
               </div>
-            ) : (
-              // Slider normal para las otras preguntas
-              <>
-                <div className="text-center">
-                  <div className="text-4xl font-bold text-primary mb-2">
-                    {getCurrentResponse()}
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Arrastra el control para seleccionar tu respuesta
-                  </p>
-                </div>
-                
-                <div className="px-4 py-12 md:py-8">
-                  <Slider
-                    value={getCurrentResponse()}
-                    onValueChange={updateResponse}
-                    min={0}
-                    max={10}
-                    step={1}
-                    className="w-full"
-                  />
-                </div>
-              </>
-            )}
+              <p className="text-sm text-muted-foreground">
+                Arrastra el control para seleccionar tu respuesta
+              </p>
+            </div>
+            
+            <div className="px-4 py-12 md:py-8">
+              <Slider
+                value={getCurrentResponse()}
+                onValueChange={updateResponse}
+                min={1}
+                max={10}
+                step={1}
+                className="w-full"
+              />
+            </div>
           </div>
 
           {/* Navigation Buttons */}
@@ -431,15 +427,7 @@ export function PatientEvaluationForm({ pacienteId, pacienteNombre, evaluationTy
                     )}
                   </div>
                   <span className={`font-semibold ${hasResponse ? 'text-primary' : 'text-muted-foreground'}`}>
-                    {hasResponse ? (
-                      question.id === 'minutos_sesion_post' 
-                        ? `${response.value} minutos` 
-                        : `${response.value}/10`
-                    ) : (
-                      question.id === 'minutos_sesion_post' 
-                        ? '0 minutos (por defecto)' 
-                        : '5/10 (por defecto)'
-                    )}
+                    {hasResponse ? `${response.value}/10` : '5/10 (por defecto)'}
                   </span>
                 </div>
               );

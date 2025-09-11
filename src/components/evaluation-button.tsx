@@ -94,10 +94,22 @@ export function EvaluationButton({ pacienteId }: EvaluationButtonProps) {
       // Si ambas evaluaciones están completas
       if (status.postCompleted) {
         return (
-          <Button variant="outline" className="w-full h-12 gap-2 shadow-sm" disabled>
-            <CheckCircle className="h-4 w-4 text-green-600" />
-            Evaluaciones Completas
-          </Button>
+          <div className="space-y-3">
+            {/* Mostrar promedios cuando ambas evaluaciones estén completas */}
+            {status.preAverage !== undefined && status.postAverage !== undefined && status.overallAverage !== undefined && (
+              <div className="grid grid-cols-3 gap-2">
+                <AverageDisplay average={status.preAverage} label="Pre" />
+                <AverageDisplay average={status.postAverage} label="Post" />
+                <AverageDisplay average={status.overallAverage} label="General" />
+              </div>
+            )}
+            <Link href={`/paciente/${pacienteId}/evaluacion?sesionId=${status.ultimaSesion.id}`} className="w-full">
+              <Button variant="outline" className="w-full h-12 gap-2 shadow-sm text-green-700 border-green-200 hover:bg-green-50">
+                <CheckCircle className="h-4 w-4 text-green-600" />
+                Ver Resultados Completos
+              </Button>
+            </Link>
+          </div>
         )
       }
 

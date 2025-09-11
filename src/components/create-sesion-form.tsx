@@ -136,8 +136,19 @@ export function CreateSesionForm({ pacienteId }: CreateSesionFormProps) {
   }, []);
 
   async function handleSubmit(formData: FormData) {
+    // Capturar la fecha y hora actual del dispositivo
+    const now = new Date();
+    const dia = now.getDate().toString().padStart(2, '0');
+    const mes = (now.getMonth() + 1).toString().padStart(2, '0');
+    const año = now.getFullYear();
+    const horas = now.getHours().toString().padStart(2, '0');
+    const minutos = now.getMinutes().toString().padStart(2, '0');
+    
     formData.append("paciente_id", pacienteId);
     formData.append("sentimiento", selectedSentimiento);
+    formData.append("fecha_local", `${dia}-${mes}-${año}`);
+    formData.append("hora_local", `${horas}:${minutos}`);
+    
     const result = await createSesionDiaria(formData);
 
     if (result.success) {

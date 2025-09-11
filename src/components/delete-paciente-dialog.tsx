@@ -36,7 +36,7 @@ export function DeletePacienteDialog({ paciente, children }: DeletePacienteDialo
       
       if (result.success) {
         toast.success(result.message);
-        router.refresh();
+        router.push('/');
         setIsOpen(false);
       } else {
         toast.error(result.message);

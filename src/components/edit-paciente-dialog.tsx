@@ -1,9 +1,10 @@
 'use client';
 
-import { updatePatient } from "@/lib/actions";
+import { updatePatient, getCategorias } from "@/lib/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -15,9 +16,9 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { Edit, User, UserCheck, Calendar, Save, Loader2, Building, CreditCard } from "lucide-react";
+import { Edit, User, UserCheck, Calendar, Save, Loader2, Building, CreditCard, Tag, FileText } from "lucide-react";
 import { useFormStatus } from "react-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // Lista de obras sociales disponibles
@@ -40,6 +41,8 @@ interface EditPacienteDialogProps {
     nombre_paciente: string;
     tipo_paciente: "particular" | "obra_social";
     obra_social?: string | null;
+    categoria_id?: string | null;
+    nota_lesion?: string | null;
     sesiones_totales: number;
   };
   children: React.ReactNode;
@@ -48,6 +51,24 @@ interface EditPacienteDialogProps {
 function FormFields({ paciente }: { paciente: EditPacienteDialogProps['paciente'] }) {
   const { pending } = useFormStatus();
   const [tipoPaciente, setTipoPaciente] = useState<string>(paciente.tipo_paciente);
+  const [categorias, setCategorias] = useState<Array<{id: string, nombre: string, descripcion?: string}>>([]);
+
+  useEffect(() => {
+    const fetchCategorias = async () => {
+      const result = await getCategorias();
+      if (result.success && result.data) {
+        // Convertir descripcion: null a undefined para cumplir con el tipo esperado
+        setCategorias(
+          result.data.map(({ id, nombre, descripcion }) => ({
+            id,
+            nombre,
+            descripcion: descripcion ?? undefined,
+          }))
+        );
+      }
+    };
+    fetchCategorias();
+  }, []);
   
   return (
     <div className="space-y-3">
@@ -81,6 +102,41 @@ function FormFields({ paciente }: { paciente: EditPacienteDialogProps['paciente'
             <SelectItem value="obra_social">Obra Social</SelectItem>
           </SelectContent>
         </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="categoria_id" className="text-sm font-medium flex items-center gap-2">
+          <Tag className="h-4 w-4 text-purple-600" />
+          Categoría
+        </Label>
+        <Select name="categoria_id" disabled={pending} defaultValue={paciente.categoria_id || "sin-categoria"}>
+          <SelectTrigger className="!h-11 text-base disabled:opacity-50 disabled:cursor-not-allowed">
+            <SelectValue placeholder="Seleccione una categoría (opcional)" />
+          </SelectTrigger>
+          <SelectContent className="w-full">
+            <SelectItem value="sin-categoria">Sin categoría</SelectItem>
+            {categorias.map((categoria) => (
+              <SelectItem key={categoria.id} value={categoria.id}>
+                {categoria.nombre}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="nota_lesion" className="text-sm font-medium flex items-center gap-2">
+          <FileText className="h-4 w-4 text-orange-600" />
+          Nota sobre la Lesión
+        </Label>
+        <Textarea
+          id="nota_lesion"
+          name="nota_lesion"
+          disabled={pending}
+          defaultValue={paciente.nota_lesion || ""}
+          placeholder="Describa el tipo de lesión, síntomas, tratamiento previo, etc. (opcional)"
+          className="min-h-[70px] text-base disabled:opacity-50 disabled:cursor-not-allowed resize-none"
+        />
       </div>
 
       {tipoPaciente === "obra_social" && (

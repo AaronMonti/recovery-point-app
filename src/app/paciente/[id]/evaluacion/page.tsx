@@ -30,7 +30,7 @@ export default async function EvaluacionPaciente({
       <main className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
         <div className="container mx-auto py-8 px-4 md:px-6 text-center">
           <h1 className="text-2xl font-bold mb-4">Paciente no encontrado</h1>
-          <Link href="/">
+          <Link href="/pacientes">
             <Button variant="outline" className="mt-4">Volver al listado</Button>
           </Link>
         </div>
@@ -102,10 +102,39 @@ export default async function EvaluacionPaciente({
                         {(() => {
                           try {
                             const promedios = JSON.parse(evaluacionSesion.promediosComprimidos);
-                            const valores = Object.values(promedios).filter(val => typeof val === 'number');
-                            if (valores.length > 0) {
-                              const promedio = valores.reduce((sum: number, val: number) => sum + val, 0) / valores.length;
-                              return Math.round(promedio * 100) / 100;
+                            
+                            // Calcular promedios pre y post por separado para ser consistente
+                            const valoresPre = Object.entries(promedios)
+                              .filter(([key, val]) => 
+                                (key === 'stress' || key === 'sueno' || key === 'fatiga' || key === 'dolorMuscular') && 
+                                typeof val === 'number'
+                              )
+                              .map(([, val]) => val as number);
+                              
+                            const valoresPost = Object.entries(promedios)
+                              .filter(([key, val]) => 
+                                (key === 'percepcionEsfuerzo' || key === 'eva') && 
+                                typeof val === 'number'
+                              )
+                              .map(([, val]) => val as number);
+                            
+                            let promedioPre = 0;
+                            let promedioPost = 0;
+                            let count = 0;
+                            
+                            if (valoresPre.length > 0) {
+                              promedioPre = valoresPre.reduce((sum, val) => sum + val, 0) / valoresPre.length;
+                              count++;
+                            }
+                            
+                            if (valoresPost.length > 0) {
+                              promedioPost = valoresPost.reduce((sum, val) => sum + val, 0) / valoresPost.length;
+                              count++;
+                            }
+                            
+                            if (count > 0) {
+                              const promedioGeneral = (promedioPre + promedioPost) / count;
+                              return Math.round(promedioGeneral * 100) / 100;
                             }
                             return 'N/A';
                           } catch (error) {
@@ -119,43 +148,51 @@ export default async function EvaluacionPaciente({
 
                 {/* Detalles de promedios por categoría */}
                 <div className="space-y-3">
-                  <h3 className="text-lg font-semibold">Promedios por Categoría</h3>
+                  <h3 className="text-lg font-semibold">Respuestas Registradas</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                     {(() => {
                       try {
                         const promedios = JSON.parse(evaluacionSesion.promediosComprimidos);
-                        return Object.entries(promedios).map(([categoria, promedio]) => (
-                          <div key={categoria} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                            <span className="text-sm font-medium capitalize">
-                              {categoria.replace(/([A-Z])/g, ' $1').trim()}
-                            </span>
-                            <Badge variant="secondary" className="font-semibold">
-                              {typeof promedio === 'number' ? Math.round(promedio * 100) / 100 : 'N/A'}
-                            </Badge>
-                          </div>
-                        ));
-                      } catch (error) {
-                        return <p className="text-muted-foreground">No se pudieron cargar los promedios</p>;
-                      }
-                    })()}
-                  </div>
-                </div>
+                        
+                        // Mapeo de nombres de categorías a etiquetas más legibles
+                        const categoriaLabels: { [key: string]: { label: string, tipo: 'pre' | 'post' | 'neutral' } } = {
+                          stress: { label: 'Estrés', tipo: 'pre' },
+                          sueno: { label: 'Calidad del Sueño', tipo: 'pre' },
+                          fatiga: { label: 'Fatiga', tipo: 'pre' },
+                          dolorMuscular: { label: 'Dolor Muscular', tipo: 'pre' },
+                          percepcionEsfuerzo: { label: 'Percepción de Esfuerzo', tipo: 'post' },
+                          eva: { label: 'Dolor Post-Sesión (EVA)', tipo: 'post' },
+                          minutosSesion: { label: 'Duración de Sesión', tipo: 'neutral' }
+                        };
 
-                {/* Respuestas detalladas */}
-                <div className="space-y-3">
-                  <h3 className="text-lg font-semibold">Respuestas Detalladas</h3>
-                  <div className="space-y-2">
-                    {(() => {
-                      try {
-                        const respuestas = JSON.parse(evaluacionSesion.respuestasComprimidas);
-                        return respuestas.map((respuesta: EvaluationResponse, index: number) => (
-                          <div key={index} className="p-3 bg-muted/20 rounded-lg">
-                            <p className="font-medium text-sm mb-1">{respuesta.questionText}</p>
-                            <p className="text-sm text-muted-foreground">
-                              Respuesta: <span className="font-medium">{respuesta.answer}</span>
-                            </p>
-                          </div>
-                        ));
+                        return Object.entries(promedios)
+                          .filter(([categoria]) => categoria !== 'inicioSesion') // Filtrar inicioSesion
+                          .map(([categoria, promedio]) => {
+                            const info = categoriaLabels[categoria];
+                            const label = info?.label || categoria.replace(/([A-Z])/g, ' $1').trim();
+                            const tipo = info?.tipo || 'neutral';
+                            
+                            return (
+                              <div key={categoria} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border-l-4 border-l-primary/30">
+                                <div className="flex flex-col">
+                                  <span className="text-sm font-medium">{label}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {tipo === 'pre' ? 'Pre-sesión' : tipo === 'post' ? 'Post-sesión' : 'Información'}
+                                  </span>
+                                </div>
+                                <Badge 
+                                  variant={tipo === 'neutral' ? 'outline' : 'secondary'} 
+                                  className="font-semibold"
+                                >
+                                  {typeof promedio === 'number' ? (
+                                    categoria === 'minutosSesion' ? 
+                                      `${Math.round(promedio)} min` : 
+                                      `${Math.round(promedio * 100) / 100}/10`
+                                  ) : 'N/A'}
+                                </Badge>
+                              </div>
+                            );
+                          });
                       } catch (error) {
                         return <p className="text-muted-foreground">No se pudieron cargar las respuestas</p>;
                       }

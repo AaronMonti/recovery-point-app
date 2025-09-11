@@ -1,11 +1,27 @@
 import { sqliteTable, AnySQLiteColumn, text, integer, foreignKey, uniqueIndex } from "drizzle-orm/sqlite-core"
   import { sql } from "drizzle-orm"
 
+export const categorias = sqliteTable("categorias", {
+	id: text().primaryKey().notNull(),
+	nombre: text().notNull(),
+	descripcion: text(),
+	createdAt: text("created_at"),
+});
+
+export const obras_sociales = sqliteTable("obras_sociales", {
+	id: text().primaryKey().notNull(),
+	nombre: text().notNull(),
+	descripcion: text(),
+	createdAt: text("created_at"),
+});
+
 export const pacientes = sqliteTable("pacientes", {
 	id: text().primaryKey().notNull(),
 	nombrePaciente: text("nombre_paciente").notNull(),
 	tipoPaciente: text("tipo_paciente").notNull(),
-	obraSocial: text("obra_social"),
+	obraSocialId: text("obra_social_id").references(() => obras_sociales.id),
+	categoriaId: text("categoria_id").references(() => categorias.id),
+	notaLesion: text("nota_lesion"),
 	sesionesTotales: integer("sesiones_totales").notNull(),
 	createdAt: text("created_at"),
 });

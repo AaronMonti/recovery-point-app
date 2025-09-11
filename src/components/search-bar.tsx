@@ -21,7 +21,7 @@ export function SearchBar() {
       }
       // Resetear página a 1 cuando se hace una nueva búsqueda
       params.delete('page');
-      router.push(`/?${params.toString()}`, { scroll: false });
+      router.push(`/pacientes?${params.toString()}`, { scroll: false });
     };
   }, [searchParams, router]);
 
@@ -36,7 +36,7 @@ export function SearchBar() {
 
     const timer = setTimeout(() => {
       updateSearchParams(searchQuery);
-    }, 300);
+    }, 100);
 
     return () => clearTimeout(timer);
   }, [searchQuery]); // Removemos updateSearchParams de las dependencias
@@ -46,12 +46,13 @@ export function SearchBar() {
   };
 
   return (
-    <div className="relative max-w-full md:max-w-sm">
+    <div className="relative max-w-full md:max-w-sm h-10">
       <Input
         type="search"
         placeholder="Buscar pacientes..."
         value={searchQuery}
         onChange={handleSearch}
+        className="h-10"
       />
     </div>
   );

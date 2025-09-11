@@ -9,9 +9,15 @@ interface EvaluationResponse {
 }
 
 function calculateAverage(responses: EvaluationResponse[]): number {
-  if (responses.length === 0) return 0
-  const sum = responses.reduce((acc, response) => acc + response.value, 0)
-  return Math.round((sum / responses.length) * 10) / 10 // Redondear a 1 decimal
+  if (responses.length === 0) return 5 // Valor por defecto cuando no hay respuestas (rango 1-10)
+  
+  // Excluir minutos_sesion del cálculo del promedio
+  const respuestasParaPromedio = responses.filter(response => !response.questionId.includes('minutos_sesion'))
+  
+  if (respuestasParaPromedio.length === 0) return 5 // Si solo hay minutos_sesion, retornar valor por defecto
+  
+  const sum = respuestasParaPromedio.reduce((acc, response) => acc + response.value, 0)
+  return Math.round((sum / respuestasParaPromedio.length) * 10) / 10 // Redondear a 1 decimal
 }
 
 export interface EvaluationStatus {
@@ -85,12 +91,16 @@ export function useEvaluationStatus(pacienteId: string): EvaluationStatus {
             
             if (tieneEvaluacionPre) {
               preCompleted = true
-              preAverage = calculateAverage(respuestas)
+              // Filtrar solo respuestas pre para calcular el promedio
+              const respuestasPre = respuestas.filter(r => r.questionId.includes('_pre'))
+              preAverage = calculateAverage(respuestasPre)
             }
             
             if (tieneEvaluacionPost) {
               postCompleted = true
-              postAverage = calculateAverage(respuestas)
+              // Filtrar solo respuestas post para calcular el promedio
+              const respuestasPost = respuestas.filter(r => r.questionId.includes('_post'))
+              postAverage = calculateAverage(respuestasPost)
             }
           } catch (error) {
             console.error('Error parsing evaluation responses:', error)

@@ -4,6 +4,12 @@ import "./globals.css";
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
+import { AuthProvider } from "@/components/auth-provider";
+import { SidebarInset, SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/app-sidebar";
+import { ConditionalSidebar } from "@/components/conditional-sidebar";
+import { FloatingSidebarTrigger } from "@/components/floating-sidebar-trigger";
+import { MainContent } from "@/components/main-content";
 
 const fontSans = FontSans({
   subsets: ["latin"],
@@ -29,7 +35,18 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <AuthProvider>
+            <SidebarProvider defaultOpen={false}>
+              <ConditionalSidebar />
+              {/* Botón flotante para abrir el sidebar cuando está cerrado */}
+              <FloatingSidebarTrigger />
+              
+              {/* Contenido principal con funcionalidad de cerrar sidebar */}
+              <MainContent>
+                {children}
+              </MainContent>
+            </SidebarProvider>
+          </AuthProvider>
         </ThemeProvider>
         <Toaster />
       </body>

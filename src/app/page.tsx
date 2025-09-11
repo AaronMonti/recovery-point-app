@@ -1,235 +1,166 @@
-import { getPacientesConBusqueda } from "@/lib/actions";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
+import { Building2, FolderOpen, Users, BarChart3, Settings, Info } from "lucide-react";
 import Link from "next/link";
-import { DateFilter } from "@/components/date-filter";
-import { SearchBar } from "@/components/search-bar";
-import { PaginationControls } from "@/components/pagination-controls";
-import { ExportExcelButton } from "@/components/export-excel-button";
-import { Suspense } from "react";
-import { ModeToggle } from "@/components/theme-toggle";
-import { EditPacienteDialog } from "@/components/edit-paciente-dialog";
-import { DeletePacienteDialog } from "@/components/delete-paciente-dialog";
-import {
-  Plus,
-  Users,
-  Calendar,
-  Trash2,
-  Eye,
-  Activity,
-  Clock,
-  Edit,
-  Info,
-  AlertTriangle,
-  CreditCard,
-  Building
-} from "lucide-react";
+import { getEstadisticasAdministracion } from "@/lib/actions";
+import { ProtectedPage } from "@/components/protected-page";
 
-export default async function Home({ searchParams }: { searchParams: Promise<{ [key: string]: string | string[] | undefined }> }) {
-  const params = await searchParams;
-  const startDate = typeof params.startDate === 'string' ? params.startDate : undefined;
-  const endDate = typeof params.endDate === 'string' ? params.endDate : undefined;
-  const searchQuery = typeof params.search === 'string' ? params.search : undefined;
-  const currentPage = typeof params.page === 'string' ? parseInt(params.page) : 1;
-
-  const pageSize = 9; // 3x3 grid
-  const result = await getPacientesConBusqueda(startDate, endDate, searchQuery, currentPage, pageSize);
-  const { pacientes, total, totalPages } = result;
+export default async function Home() {
+  const estadisticasResult = await getEstadisticasAdministracion();
+  const estadisticas = estadisticasResult.success ? estadisticasResult.data : { obrasSociales: 0, categorias: 0, pacientes: 0 };
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <div className="container mx-auto py-8 px-4 md:px-6">
-        {/* Header con toggle de tema */}
-        <div className="flex justify-end mb-6">
-          <ModeToggle />
-        </div>
-
-        {/* Título principal y botones */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
-          <div className="space-y-2">
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-              Gestión de Pacientes
-            </h1>
-            <p className="text-muted-foreground text-lg">
-              Administra y monitorea el progreso de tus pacientes
-            </p>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Info className="h-4 w-4" />
-              Mostrando pacientes creados en los últimos 12 meses
-            </div>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <ExportExcelButton />
-            <Link href="/paciente/nuevo">
-              <Button size="lg" className="gap-2 shadow-lg hover:shadow-xl transition-all duration-200">
-                <Plus className="h-5 w-5" />
-                Nuevo Paciente
-              </Button>
-            </Link>
-          </div>
-        </div>
-
-        {/* Barra de búsqueda y filtros */}
-        <div className="mb-10">
-          <div className="flex flex-col lg:flex-row gap-4 justify-between">
-            <SearchBar />
-            <Suspense fallback={
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Clock className="h-4 w-4 animate-spin" />
-                Cargando filtros...
-              </div>
-            }>
-              <DateFilter />
-            </Suspense>
-          </div>
-        </div>
-
-        {/* Información de resultados */}
-        {total > 0 && (
-          <div className="mb-6 text-sm text-muted-foreground">
-            Mostrando {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, total)} de {total} pacientes
-          </div>
-        )}
-
-        {/* Contenido principal */}
-        {pacientes && pacientes.length > 0 ? (
-          <div className="space-y-6">
-            {/* Grid de pacientes */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {pacientes.map((paciente) => (
-                <Card 
-                  key={paciente.id} 
-                  className={`group hover:shadow-lg transition-all duration-200 border-muted-foreground/20 overflow-hidden ${
-                    paciente.evaluacionPendiente ? 'border-orange-300 bg-orange-50/30' : ''
-                  }`}
-                >
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-xl font-semibold group-hover:text-primary transition-colors">
-                        {paciente.nombre_paciente}
-                      </CardTitle>
-                      <div className="flex items-center gap-2">
-                        {paciente.evaluacionPendiente && (
-                          <div className="p-2 bg-orange-100 rounded-full" title="Evaluación post-sesión pendiente">
-                            <AlertTriangle className="h-4 w-4 text-orange-600" />
-                          </div>
-                        )}
-                        <div className="p-2 bg-muted rounded-full">
-                          <Users className="h-4 w-4 text-muted-foreground" />
-                        </div>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2 text-sm">
-                          <CreditCard className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-muted-foreground">Tipo:</span>
-                          <span className="font-medium capitalize">
-                            {paciente.tipo_paciente === "obra_social" ? "Obra Social" : "Particular"}
-                          </span>
-                        </div>
-                        
-                        {paciente.tipo_paciente === "obra_social" && paciente.obra_social && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <Building className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-muted-foreground">Obra Social:</span>
-                            <span className="font-medium">{paciente.obra_social}</span>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="space-y-3">
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-muted-foreground flex items-center gap-1">
-                            <Activity className="h-3 w-3" />
-                            Progreso de sesiones
-                          </span>
-                          <span className="text-sm font-medium bg-muted px-2 py-1 rounded-full">
-                            {paciente.sesiones_completadas} de {paciente.sesiones_totales}
-                          </span>
-                        </div>
-                        <Progress
-                          value={(paciente.sesiones_completadas / paciente.sesiones_totales) * 100}
-                          className="h-3"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2 pt-2 w-full">
-                      <Link href={`/paciente/${paciente.id}`} className="flex-1 min-w-[150px]">
-                        <Button variant="outline" className="w-full gap-2 group/btn">
-                          <Eye className="group-hover/btn:scale-110 transition-transform" />
-                          Ver detalles
-                        </Button>
-                      </Link>
-
-                      <EditPacienteDialog paciente={paciente}>
-                        <div className="flex-1 min-w-[150px]">
-                          <Button variant="secondary" className="w-full gap-2 group/btn">
-                            <Edit className="group-hover/btn:scale-110 transition-transform" />
-                            Editar
-                          </Button>
-                        </div>
-                      </EditPacienteDialog>
-
-                      <DeletePacienteDialog paciente={paciente}>
-                        <div className="flex-1 min-w-[150px]">
-                          <Button variant="destructive" className="w-full gap-2 group/btn">
-                            <Trash2 className="group-hover/btn:scale-110 transition-transform" />
-                            Eliminar
-                          </Button>
-                        </div>
-                      </DeletePacienteDialog>
-                    </div>
-
-
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            {/* Paginación */}
-            <div className="flex justify-center">
-              <PaginationControls currentPage={currentPage} totalPages={totalPages} />
-            </div>
-          </div>
-        ) : (
-          <Card className="border-muted-foreground/20 shadow-sm">
-            <CardContent className="text-center py-16">
-              <div className="space-y-4">
-                <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center">
-                  <Users className="h-8 w-8 text-muted-foreground" />
+    <ProtectedPage>
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+        <main>
+          <div className="container mx-auto py-8 px-4 md:px-6">
+            {/* Título principal */}
+            <div className="mb-10">
+              <div className="space-y-2">
+                <h1 className="text-4xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
+                  Administración
+                </h1>
+                <p className="text-muted-foreground text-lg">
+                  Gestiona las configuraciones del sistema y datos maestros
+                </p>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Info className="h-4 w-4" />
+                  Configuración y gestión de datos del sistema
                 </div>
-                <div className="space-y-2">
-                  <h3 className="text-xl font-semibold">No se encontraron pacientes</h3>
-                  {(startDate || endDate || searchQuery) && (
-                    <p className="text-muted-foreground max-w-md mx-auto">
-                      {searchQuery
-                        ? `No hay pacientes que coincidan con "${searchQuery}"`
-                        : "No hay pacientes creados en el rango de fechas seleccionado."
-                      }
-                    </p>
-                  )}
-                  {!startDate && !endDate && !searchQuery && (
-                    <p className="text-muted-foreground max-w-md mx-auto">
-                      No hay pacientes creados en los últimos 12 meses. Comienza agregando tu primer paciente.
-                    </p>
-                  )}
-                </div>
-                <Link href="/paciente/nuevo">
-                  <Button className="gap-2 mt-4">
-                    <Plus className="h-4 w-4" />
-                    Agregar primer paciente
-                  </Button>
-                </Link>
               </div>
-            </CardContent>
-          </Card>
-        )}
+            </div>
+
+            {/* Grid de administración */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6">
+              {/* Obras Sociales */}
+              <Card className="group hover:shadow-lg transition-all duration-200 border-muted-foreground/20 overflow-hidden">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center space-x-2">
+                    <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-full">
+                      <Building2 className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <CardTitle className="text-lg group-hover:text-primary transition-colors">Obras Sociales</CardTitle>
+                  </div>
+                  <CardDescription>
+                    Gestiona las obras sociales disponibles
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Link href="/administracion/obras-sociales">
+                    <Button className="w-full gap-2 group/btn">
+                      <Settings className="h-4 w-4 group-hover/btn:scale-110 transition-transform" />
+                      Administrar Obras Sociales
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+
+              {/* Categorías */}
+              <Card className="group hover:shadow-lg transition-all duration-200 border-muted-foreground/20 overflow-hidden">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center space-x-2">
+                    <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-full">
+                      <FolderOpen className="h-5 w-5 text-green-600" />
+                    </div>
+                    <CardTitle className="text-lg group-hover:text-primary transition-colors">Categorías</CardTitle>
+                  </div>
+                  <CardDescription>
+                    Organiza los pacientes por categorías
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Link href="/administracion/categorias">
+                    <Button className="w-full gap-2 group/btn">
+                      <Settings className="h-4 w-4 group-hover/btn:scale-110 transition-transform" />
+                      Administrar Categorías
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+
+              {/* Pacientes */}
+              <Card className="group hover:shadow-lg transition-all duration-200 border-muted-foreground/20 overflow-hidden">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center space-x-2">
+                    <div className="p-2 bg-purple-100 dark:bg-purple-900/20 rounded-full">
+                      <Users className="h-5 w-5 text-purple-600" />
+                    </div>
+                    <CardTitle className="text-lg group-hover:text-primary transition-colors">Pacientes</CardTitle>
+                  </div>
+                  <CardDescription>
+                    Gestiona la información de los pacientes
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Link href="/pacientes">
+                    <Button variant="outline" className="w-full gap-2 group/btn">
+                      <Users className="h-4 w-4 group-hover/btn:scale-110 transition-transform" />
+                      Ver Pacientes
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+
+              {/* Estadísticas */}
+              <Card className="group hover:shadow-lg transition-all duration-200 border-muted-foreground/20 overflow-hidden">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center space-x-2">
+                    <div className="p-2 bg-orange-100 dark:bg-orange-900/20 rounded-full">
+                      <BarChart3 className="h-5 w-5 text-orange-600" />
+                    </div>
+                    <CardTitle className="text-lg group-hover:text-primary transition-colors">Estadísticas</CardTitle>
+                  </div>
+                  <CardDescription>
+                    Visualiza estadísticas y reportes
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Link href="/estadisticas">
+                    <Button variant="outline" className="w-full gap-2 group/btn">
+                      <BarChart3 className="h-4 w-4 group-hover/btn:scale-110 transition-transform" />
+                      Ver Estadísticas
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Información del Sistema */}
+            <div className="mt-10">
+              <Card className="border-muted-foreground/20 shadow-sm">
+                <CardHeader>
+                  <CardTitle className="text-xl font-semibold">Información del Sistema</CardTitle>
+                  <CardDescription>
+                    Resumen de la configuración actual del sistema
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="text-center p-6 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                      <div className="text-3xl font-bold text-blue-600 mb-2">{estadisticas.obrasSociales}</div>
+                      <div className="text-sm text-muted-foreground">
+                        Obras Sociales Registradas
+                      </div>
+                    </div>
+                    <div className="text-center p-6 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                      <div className="text-3xl font-bold text-green-600 mb-2">{estadisticas.categorias}</div>
+                      <div className="text-sm text-muted-foreground">
+                        Categorías Creadas
+                      </div>
+                    </div>
+                    <div className="text-center p-6 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+                      <div className="text-3xl font-bold text-purple-600 mb-2">{estadisticas.pacientes}</div>
+                      <div className="text-sm text-muted-foreground">
+                        Pacientes Activos
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </main>
       </div>
-    </main>
+    </ProtectedPage>
   );
 }
