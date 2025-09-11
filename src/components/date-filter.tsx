@@ -50,7 +50,7 @@ export function DateFilter() {
         params.set('endDate', format(endDate, 'yyyy-MM-dd'));
         // Resetear página a 1 cuando se aplica un filtro
         params.delete('page');
-        router.push(`/?${params.toString()}`, { scroll: false });
+        router.push(`/pacientes?${params.toString()}`, { scroll: false });
       }
     });
   }, [startDate, endDate, searchParams, router, startTransition]);
@@ -64,7 +64,7 @@ export function DateFilter() {
       params.delete('startDate');
       params.delete('endDate');
       params.delete('page');
-      router.push(`/?${params.toString()}`, { scroll: false });
+      router.push(`/pacientes?${params.toString()}`, { scroll: false });
     });
   }, [searchParams, router, startTransition]);
 
