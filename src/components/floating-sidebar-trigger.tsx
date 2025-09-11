@@ -2,9 +2,16 @@
 
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { useSidebar } from '@/components/ui/sidebar';
+import { usePathname } from 'next/navigation';
 
 export function FloatingSidebarTrigger() {
   const { state } = useSidebar();
+  const pathname = usePathname();
+  
+  // No mostrar en la página de login
+  if (pathname === '/login') {
+    return null;
+  }
   
   // Solo mostrar cuando el sidebar está colapsado
   if (state !== 'collapsed') {
