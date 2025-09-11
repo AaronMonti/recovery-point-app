@@ -103,7 +103,7 @@ export function EvaluationButton({ pacienteId }: EvaluationButtonProps) {
                 <AverageDisplay average={status.overallAverage} label="General" />
               </div>
             )}
-            <Link href={`/paciente/${pacienteId}/evaluacion?sesionId=${status.ultimaSesion.id}`} className="w-full">
+            <Link href={`/paciente/${pacienteId}/evaluacion?sesionId=${status.ultimaSesion?.id}`} className="w-full">
               <Button variant="outline" className="w-full h-12 gap-2 shadow-sm text-green-700 border-green-200 hover:bg-green-50">
                 <CheckCircle className="h-4 w-4 text-green-600" />
                 Ver Resultados Completos

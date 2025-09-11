@@ -17,8 +17,8 @@ import { useState, useEffect } from "react";
 function FormFields() {
   const { pending } = useFormStatus();
   const [tipoPaciente, setTipoPaciente] = useState<string>("");
-  const [categorias, setCategorias] = useState<Array<{id: string, nombre: string, descripcion?: string}>>([]);
-  const [obrasSociales, setObrasSociales] = useState<Array<{id: string, nombre: string, descripcion?: string}>>([]);
+  const [categorias, setCategorias] = useState<Array<{id: string, nombre: string, descripcion: string | null}>>([]);
+  const [obrasSociales, setObrasSociales] = useState<Array<{id: string, nombre: string, descripcion: string | null}>>([]);
 
   useEffect(() => {
     const fetchData = async () => {
