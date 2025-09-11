@@ -40,7 +40,7 @@ export function DeleteObraSocialDialog({ obraSocial }: DeleteObraSocialDialogPro
       } else {
         toast.error(result.message);
       }
-    } catch (error) {
+    } catch {
       toast.error("Error al eliminar la obra social");
     } finally {
       setIsLoading(false);
@@ -60,7 +60,7 @@ export function DeleteObraSocialDialog({ obraSocial }: DeleteObraSocialDialogPro
         <DialogHeader>
           <DialogTitle>Eliminar Obra Social</DialogTitle>
           <DialogDescription>
-            ¿Estás seguro de que deseas eliminar la obra social "{obraSocial.nombre}"?
+            ¿Estás seguro de que deseas eliminar la obra social &quot;{obraSocial.nombre}&quot;?
             Esta acción no se puede deshacer.
           </DialogDescription>
         </DialogHeader>

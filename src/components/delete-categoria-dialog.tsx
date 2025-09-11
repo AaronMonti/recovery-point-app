@@ -40,7 +40,7 @@ export function DeleteCategoriaDialog({ categoria }: DeleteCategoriaDialogProps)
       } else {
         toast.error(result.message);
       }
-    } catch (error) {
+    } catch {
       toast.error("Error al eliminar la categoría");
     } finally {
       setIsLoading(false);
@@ -59,7 +59,7 @@ export function DeleteCategoriaDialog({ categoria }: DeleteCategoriaDialogProps)
         <DialogHeader>
           <DialogTitle>Eliminar Categoría</DialogTitle>
           <DialogDescription>
-            ¿Estás seguro de que deseas eliminar la categoría "{categoria.nombre}"?
+            ¿Estás seguro de que deseas eliminar la categoría &quot;{categoria.nombre}&quot;?
             Esta acción no se puede deshacer.
           </DialogDescription>
         </DialogHeader>
