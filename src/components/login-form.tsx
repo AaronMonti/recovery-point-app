@@ -135,6 +135,15 @@ export function LoginForm() {
             </form>
           </CardContent>
         </Card>
+
+        <div className="text-center text-sm text-muted-foreground">
+          <p>
+            usuario: recoverypoint.ar@outlook.com
+          </p>
+          <p>
+            contraseña: TaBAlwy
+          </p>
+        </div>
       </div>
     </div>
   )
