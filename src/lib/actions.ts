@@ -324,7 +324,24 @@ export const deletePatient = async (id: string) => {
 
 export async function getPaciente(id: string) {
   try {
-    return db.select().from(pacientes).where(eq(pacientes.id, id)).get();
+    const result = await db
+      .select({
+        id: pacientes.id,
+        nombre_paciente: pacientes.nombre_paciente,
+        tipo_paciente: pacientes.tipo_paciente,
+        obra_social_id: pacientes.obra_social_id,
+        obra_social: obras_sociales.nombre,
+        categoria_id: pacientes.categoria_id,
+        nota_lesion: pacientes.nota_lesion,
+        sesiones_totales: pacientes.sesiones_totales,
+        created_at: pacientes.created_at,
+      })
+      .from(pacientes)
+      .leftJoin(obras_sociales, eq(pacientes.obra_social_id, obras_sociales.id))
+      .where(eq(pacientes.id, id))
+      .get();
+    
+    return result;
   } catch (error) {
     console.error(`Error fetching patient with id ${id}:`, error);
     return undefined;
@@ -729,7 +746,7 @@ export async function limpiarEvaluacionesCorruptas() {
             evaluacionesCorruptas.push(evaluacion.id);
           }
         }
-      } catch (error) {
+      } catch {
         evaluacionesCorruptas.push(evaluacion.id);
       }
     });
@@ -775,11 +792,11 @@ export async function getEstadisticasPacientesPorHora(fechaEspecifica?: string) 
       sesiones.filter(sesion => sesion.fecha === fechaEspecifica) : 
       sesiones;
 
-    // Agrupar por hora (8am a 8pm)
+    // Agrupar por hora (7am a 8pm)
     const estadisticasPorHora: Record<string, number> = {};
     
-    // Inicializar todas las horas de 8 a 20
-    for (let i = 8; i <= 20; i++) {
+    // Inicializar todas las horas de 7 a 20
+    for (let i = 7; i <= 20; i++) {
       const hora = `${i.toString().padStart(2, '0')}:00`;
       estadisticasPorHora[hora] = 0;
     }
@@ -789,8 +806,8 @@ export async function getEstadisticasPacientesPorHora(fechaEspecifica?: string) 
       const [hora] = sesion.hora.split(':');
       const horaNum = parseInt(hora);
       
-      // Solo contar horas entre 8 y 20
-      if (horaNum >= 8 && horaNum <= 20) {
+      // Solo contar horas entre 7 y 20
+      if (horaNum >= 7 && horaNum <= 20) {
         const horaKey = `${horaNum.toString().padStart(2, '0')}:00`;
         estadisticasPorHora[horaKey]++;
       }
@@ -800,7 +817,8 @@ export async function getEstadisticasPacientesPorHora(fechaEspecifica?: string) 
     const datos = Object.entries(estadisticasPorHora).map(([hora, cantidad]) => ({
       hora,
       cantidad,
-      horaDisplay: hora === '08:00' ? '8 AM' : 
+      horaDisplay: hora === '07:00' ? '7 AM' :
+                   hora === '08:00' ? '8 AM' : 
                    hora === '12:00' ? '12 PM' :
                    hora === '20:00' ? '8 PM' :
                    parseInt(hora.split(':')[0]) > 12 ? 
@@ -842,12 +860,6 @@ export async function getEstadisticasPacientesPorDia(
     const hoy = new Date();
     let datos: { periodo: string; cantidad: number }[] = [];
 
-    // Función helper para obtener número de semana del año
-    const getWeekNumber = (date: Date): number => {
-      const firstDayOfYear = new Date(date.getFullYear(), 0, 1);
-      const pastDaysOfYear = (date.getTime() - firstDayOfYear.getTime()) / 86400000;
-      return Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
-    };
 
     // Función helper para obtener trimestre
     const getQuarter = (month: number): number => {
@@ -922,9 +934,7 @@ export async function getEstadisticasPacientesPorDia(
           const finSemana = new Date(inicioSemana.getTime() + (6 * 24 * 60 * 60 * 1000));
           
           const diaInicio = inicioSemana.getDate().toString().padStart(2, '0');
-          const mesInicio = (inicioSemana.getMonth() + 1).toString().padStart(2, '0');
           const diaFin = finSemana.getDate().toString().padStart(2, '0');
-          const mesFin = (finSemana.getMonth() + 1).toString().padStart(2, '0');
           
           // Si están en el mismo mes, mostrar "1-7 Dic", si no "28 Nov-4 Dic"
           let label: string;
@@ -986,8 +996,7 @@ export async function getEstadisticasPacientesPorDia(
         }
 
         sesiones.forEach(sesion => {
-          const [dia, mes, año] = sesion.fecha.split('-').map(Number);
-          const fechaSesion = new Date(año, mes - 1, dia);
+          const [, mes, año] = sesion.fecha.split('-').map(Number);
           const trimestreNum = getQuarter(mes);
           
           const trimestreTexto = trimestreNum === 1 ? '1er' : 
@@ -1022,7 +1031,7 @@ export async function getEstadisticasPacientesPorDia(
         }
 
         sesiones.forEach(sesion => {
-          const [dia, mes, año] = sesion.fecha.split('-').map(Number);
+          const [, mes, año] = sesion.fecha.split('-').map(Number);
           const semestreNum = getSemester(mes);
           const labelSemestre = `${semestreNum}${semestreNum === 1 ? 'er' : 'do'} Semestre ${año}`;
           
@@ -1050,7 +1059,7 @@ export async function getEstadisticasPacientesPorDia(
         }
 
         sesiones.forEach(sesion => {
-          const [dia, mes, año] = sesion.fecha.split('-').map(Number);
+          const [, , año] = sesion.fecha.split('-').map(Number);
           const labelAño = año.toString();
           
           if (estadisticasPorAño.hasOwnProperty(labelAño)) {

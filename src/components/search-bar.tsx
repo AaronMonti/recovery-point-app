@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 
@@ -39,7 +39,7 @@ export function SearchBar() {
     }, 100);
 
     return () => clearTimeout(timer);
-  }, [searchQuery]); // Removemos updateSearchParams de las dependencias
+  }, [searchQuery, searchParams, updateSearchParams]);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);

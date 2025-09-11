@@ -36,14 +36,14 @@ export default async function CategoriasPage() {
           <div className="flex items-center space-x-2">
             <FolderOpen className="h-5 w-5 text-green-600" />
             <span className="text-sm text-gray-600 dark:text-gray-400">
-              {categorias.length} categoría{categorias.length !== 1 ? 's' : ''} registrada{categorias.length !== 1 ? 's' : ''}
+              {categorias?.length || 0} categoría{(categorias?.length || 0) !== 1 ? 's' : ''} registrada{(categorias?.length || 0) !== 1 ? 's' : ''}
             </span>
           </div>
           <CreateCategoriaDialog />
         </div>
       </div>
 
-      {categorias.length === 0 ? (
+      {(categorias?.length || 0) === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <FolderOpen className="h-12 w-12 text-gray-400 mb-4" />
@@ -58,7 +58,7 @@ export default async function CategoriasPage() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {categorias.map((categoria) => (
+          {categorias?.map((categoria) => (
             <Card key={categoria.id} className="hover:shadow-lg transition-shadow">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">

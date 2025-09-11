@@ -62,7 +62,7 @@ const postQuestions: Question[] = [
   }
 ]
 
-export function PatientEvaluationForm({ pacienteId, pacienteNombre, evaluationType }: PatientEvaluationFormProps) {
+export function PatientEvaluationForm({ pacienteId, evaluationType }: PatientEvaluationFormProps) {
   const [currentStep, setCurrentStep] = useState(0)
   const [responses, setResponses] = useState<EvaluationResponse[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
