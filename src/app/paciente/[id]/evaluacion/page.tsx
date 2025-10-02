@@ -67,7 +67,7 @@ export default async function EvaluacionPaciente({
         </div>
 
         {/* Si hay evaluación de sesión, mostrarla */}
-        {evaluacionSesion ? (
+        {evaluacionSesion && !tipo ? (
           <Card className="shadow-lg border-muted-foreground/20 overflow-hidden mb-8">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-xl">
@@ -222,6 +222,7 @@ export default async function EvaluacionPaciente({
               pacienteId={id} 
               pacienteNombre={paciente.nombre_paciente} 
               evaluationType={evaluationType}
+              sesionId={typeof sesionId === 'string' ? sesionId : undefined}
             />
           </CardContent>
         </Card>

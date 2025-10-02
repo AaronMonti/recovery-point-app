@@ -288,37 +288,52 @@ export default async function PacienteDetalle({ params }: { params: Promise<{ id
                           <span className="text-xs text-muted-foreground font-medium w-20 shrink-0 md:hidden">
                             Acciones
                           </span>
-                          <div className="flex gap-2">
-                            {sesion.evaluacionId && (
-                              <Link href={`/paciente/${id}/evaluacion?sesionId=${sesion.id}`}>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="gap-1 shadow-sm"
-                                >
+                          <div className="flex flex-wrap gap-2">
+                            {/* Botón de Ver/Evaluar */}
+                            {!sesion.preEvaluacionCompleta && (
+                              <Link href={`/paciente/${id}/evaluacion?tipo=pre&sesionId=${sesion.id}`}>
+                                <Button variant="default" size="sm" className="gap-1 shadow-sm">
                                   <ClipboardList className="h-3 w-3" />
-                                  <span className="hidden lg:inline">Ver</span>
+                                  <span className="hidden lg:inline">Evaluar</span>
                                 </Button>
                               </Link>
                             )}
-                            <EditSesionDialog sesion={sesion}>
+
+                            {sesion.preEvaluacionCompleta && !sesion.postEvaluacionCompleta && (
+                              <Link href={`/paciente/${id}/evaluacion?tipo=post&sesionId=${sesion.id}`}>
+                                <Button variant="default" size="sm" className="gap-1 shadow-sm">
+                                  <ClipboardList className="h-3 w-3" />
+                                  <span className="hidden sm:inline">Evaluar Post</span>
+                                </Button>
+                              </Link>
+                            )}
+
+                            {sesion.preEvaluacionCompleta && sesion.postEvaluacionCompleta && (
+                              <Link href={`/paciente/${id}/evaluacion?sesionId=${sesion.id}`}>
+                                <Button variant="outline" size="sm" className="gap-1 shadow-sm">
+                                  <ClipboardList className="h-3 w-3" />
+                                  <span className="hidden sm:inline">Ver</span>
+                                </Button>
+                              </Link>
+                            )}
+                            <EditSesionDialog sesion={sesion} pacienteId={paciente.id}>
                               <Button
                                 variant="outline"
                                 size="sm"
                                 className="gap-1 shadow-sm"
                               >
                                 <Edit className="h-3 w-3" />
-                                <span className="hidden lg:inline">Editar</span>
+                                <span className="hidden sm:inline">Editar</span>
                               </Button>
                             </EditSesionDialog>
-                            <DeleteSesionDialog sesion={sesion}>
+                            <DeleteSesionDialog sesion={sesion} pacienteId={paciente.id}>
                               <Button
                                 variant="destructive"
                                 size="sm"
                                 className="gap-1 shadow-sm"
                               >
                                 <Trash2 className="h-3 w-3" />
-                                <span className="hidden lg:inline">Eliminar</span>
+                                <span className="hidden sm:inline">Eliminar</span>
                               </Button>
                             </DeleteSesionDialog>
                           </div>

@@ -14,11 +14,11 @@ import { useFormStatus } from "react-dom";
 interface EditSesionFormProps {
   sesion: {
     id: string;
-    paciente_id: string | null;
     fecha: string;
     hora: string;
     sentimiento: "verde" | "amarillo" | "rojo";
   };
+  pacienteId: string;
   onClose: () => void;
 }
 
@@ -188,7 +188,7 @@ function CancelButton({ onClose }: { onClose: () => void }) {
   );
 }
 
-export function EditSesionForm({ sesion, onClose }: EditSesionFormProps) {
+export function EditSesionForm({ sesion, pacienteId, onClose }: EditSesionFormProps) {
   const router = useRouter();
   const [selectedSentimiento, setSelectedSentimiento] = useState<string>(sesion.sentimiento);
   const [fecha, setFecha] = useState(sesion.fecha);
@@ -212,12 +212,12 @@ export function EditSesionForm({ sesion, onClose }: EditSesionFormProps) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(parseFecha(sesion.fecha));
 
   async function handleSubmit(formData: FormData) {
-    if (!sesion.paciente_id) {
+    if (!pacienteId) {
       toast.error("Error: ID de paciente no válido");
       return;
     }
     
-    formData.append("paciente_id", sesion.paciente_id);
+    formData.append("paciente_id", pacienteId);
     formData.append("fecha", fecha);
     formData.append("hora", hora);
     formData.append("sentimiento", selectedSentimiento);

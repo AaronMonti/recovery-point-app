@@ -9,7 +9,7 @@ import { ArrowLeft, ArrowRight, CheckCircle, Save, AlertCircle } from "lucide-re
 import { toast } from "sonner"
 import { createEvaluacion, getUltimaSesion, getEvaluacionesPorSesion } from "@/lib/actions"
 
-interface Question {
+interface Question { 
   id: string
   text: string
   description?: string
@@ -24,6 +24,7 @@ interface PatientEvaluationFormProps {
   pacienteId: string
   pacienteNombre: string
   evaluationType: 'pre' | 'post'
+  sesionId?: string;
 }
 
 const preQuestions: Question[] = [
@@ -62,7 +63,7 @@ const postQuestions: Question[] = [
   }
 ]
 
-export function PatientEvaluationForm({ pacienteId, evaluationType }: PatientEvaluationFormProps) {
+export function PatientEvaluationForm({ pacienteId, evaluationType, sesionId }: PatientEvaluationFormProps) {
   const [currentStep, setCurrentStep] = useState(0)
   const [responses, setResponses] = useState<EvaluationResponse[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -76,8 +77,17 @@ export function PatientEvaluationForm({ pacienteId, evaluationType }: PatientEva
   useEffect(() => {
     const cargarDatos = async () => {
       try {
-        // Obtener la última sesión del paciente
-        const sesion = await getUltimaSesion(pacienteId)
+        let sesion;
+        if (sesionId) {
+          // Si se provee un sesionId, obtenemos las evaluaciones de esa sesión específica
+          // y construimos un objeto de sesión parcial.
+          // La lógica principal se basa en el ID, así que esto es suficiente.
+          const evaluaciones = await getEvaluacionesPorSesion(sesionId);
+          // Asumimos que la sesión existe si llegamos aquí.
+          sesion = { id: sesionId, fecha: evaluaciones[0]?.fecha || 'N/A', hora: 'N/A', sentimiento: 'N/A' };
+        } else {
+          sesion = await getUltimaSesion(pacienteId);
+        }
         if (!sesion) {
           toast.error("No se encontró ninguna sesión para este paciente")
           return
@@ -108,7 +118,7 @@ export function PatientEvaluationForm({ pacienteId, evaluationType }: PatientEva
       }
     }
 
-    cargarDatos()
+    cargarDatos();
   }, [pacienteId, evaluationType])
 
   const getCurrentResponse = () => {

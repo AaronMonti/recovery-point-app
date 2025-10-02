@@ -356,6 +356,14 @@ export async function getSesionesDiarias(paciente_id: string) {
       .where(eq(sesiones_diarias.paciente_id, paciente_id))
       .all();
 
+    // Ordenar sesiones cronológicamente (del más reciente al más antiguo)
+    // ya que el formato DD-MM-YYYY no se ordena correctamente en la DB
+    sesiones.sort((a, b) => {
+      const [diaA, mesA, anioA] = a.fecha.split('-').map(Number);
+      const [diaB, mesB, anioB] = b.fecha.split('-').map(Number);
+      return new Date(anioB, mesB - 1, diaB).getTime() - new Date(anioA, mesA - 1, diaA).getTime();
+    });
+
     // Obtener evaluaciones para cada sesión
     const sesionesConEvaluaciones = await Promise.all(
       sesiones.map(async (sesion) => {
@@ -363,13 +371,29 @@ export async function getSesionesDiarias(paciente_id: string) {
           .select({
             id: evaluaciones.id,
             promediosComprimidos: evaluaciones.promediosComprimidos,
+            respuestasComprimidas: evaluaciones.respuestasComprimidas,
           })
           .from(evaluaciones)
           .where(eq(evaluaciones.sesionId, sesion.id))
           .get();
 
         let promedioGeneral = null;
+        let preEvaluacionCompleta = false;
+        let postEvaluacionCompleta = false;
+
         if (evaluacion?.promediosComprimidos) {
+          if (evaluacion.respuestasComprimidas) {
+            try {
+              const respuestas = JSON.parse(evaluacion.respuestasComprimidas);
+              preEvaluacionCompleta = respuestas.some((r: EvaluationResponse) => r.questionId.includes('_pre'));
+              postEvaluacionCompleta = respuestas.some((r: EvaluationResponse) => r.questionId.includes('_post'));
+            } catch (error) {
+              console.error('Error parseando respuestas para estado de evaluación:', error);
+            }
+          }
+
+
+
           try {
             const promedios = JSON.parse(evaluacion.promediosComprimidos);
             
@@ -414,6 +438,8 @@ export async function getSesionesDiarias(paciente_id: string) {
           ...sesion,
           evaluacionId: evaluacion?.id || null,
           promedioGeneral: promedioGeneral ? Math.round(promedioGeneral * 100) / 100 : null,
+          preEvaluacionCompleta: preEvaluacionCompleta,
+          postEvaluacionCompleta: postEvaluacionCompleta,
         };
       })
     );
@@ -501,6 +527,9 @@ export async function updateSesionDiaria(id: string, data: FormData) {
 
 export async function deleteSesionDiaria(id: string, paciente_id: string) {
   try {
+    // Primero, eliminar las evaluaciones asociadas a esta sesión
+    await db.delete(evaluaciones).where(eq(evaluaciones.sesionId, id));
+
     await db.delete(sesiones_diarias).where(eq(sesiones_diarias.id, id));
     
     revalidatePath(`/paciente/${paciente_id}`);
@@ -581,14 +610,31 @@ export async function getSesionesPorRangoFechas(startDate: string, endDate: stri
 // Funciones para manejar evaluaciones
 export async function getUltimaSesion(pacienteId: string) {
   try {
-    
-    const ultimaSesion = await db
+    const todasLasSesiones = await db
       .select()
       .from(sesiones_diarias)
       .where(eq(sesiones_diarias.paciente_id, pacienteId))
-      .orderBy(desc(sesiones_diarias.fecha), desc(sesiones_diarias.hora))
-      .get();
+      .all();
+
+    if (todasLasSesiones.length === 0) {
+      return undefined;
+    }
+
+    // Ordenar manualmente para asegurar el orden cronológico correcto
+    todasLasSesiones.sort((a, b) => {
+      const [diaA, mesA, anioA] = a.fecha.split('-').map(Number);
+      const [diaB, mesB, anioB] = b.fecha.split('-').map(Number);
+      const fechaA = new Date(anioA, mesA - 1, diaA).getTime();
+      const fechaB = new Date(anioB, mesB - 1, diaB).getTime();
+      
+      if (fechaB !== fechaA) {
+        return fechaB - fechaA;
+      }
+      // Si las fechas son iguales, ordenar por hora descendente
+      return b.hora.localeCompare(a.hora);
+    });
     
+    const ultimaSesion = todasLasSesiones[0];
     return ultimaSesion;
   } catch (error) {
     console.error("Error obteniendo última sesión:", error);
@@ -1259,5 +1305,3 @@ export async function getEstadisticasAdministracion() {
     };
   }
 }
-
-

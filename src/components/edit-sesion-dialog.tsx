@@ -15,15 +15,15 @@ import { useState } from "react";
 interface EditSesionDialogProps {
   sesion: {
     id: string;
-    paciente_id: string | null;
     fecha: string;
     hora: string;
     sentimiento: "verde" | "amarillo" | "rojo";
   };
+  pacienteId: string;
   children: React.ReactNode;
 }
 
-export function EditSesionDialog({ sesion, children }: EditSesionDialogProps) {
+export function EditSesionDialog({ sesion, pacienteId, children }: EditSesionDialogProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -43,6 +43,7 @@ export function EditSesionDialog({ sesion, children }: EditSesionDialogProps) {
         
         <EditSesionForm 
           sesion={sesion} 
+          pacienteId={pacienteId}
           onClose={() => setOpen(false)} 
         />
       </DialogContent>

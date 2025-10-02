@@ -19,28 +19,28 @@ import { useState } from "react";
 interface DeleteSesionDialogProps {
   sesion: {
     id: string;
-    paciente_id: string | null;
     fecha: string;
     hora: string;
     sentimiento: "verde" | "amarillo" | "rojo";
   };
+  pacienteId: string;
   children: React.ReactNode;
 }
 
-export function DeleteSesionDialog({ sesion, children }: DeleteSesionDialogProps) {
+export function DeleteSesionDialog({ sesion, pacienteId, children }: DeleteSesionDialogProps) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
 
   async function handleDelete() {
-    if (!sesion.paciente_id) {
+    if (!pacienteId) {
       toast.error("Error: ID de paciente no válido");
       return;
     }
     
     setIsDeleting(true);
     try {
-      const result = await deleteSesionDiaria(sesion.id, sesion.paciente_id);
+      const result = await deleteSesionDiaria(sesion.id, pacienteId);
 
       if (result.success) {
         toast.success(result.message);

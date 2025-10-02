@@ -31,7 +31,7 @@ export interface EvaluationStatus {
   isLoading: boolean
 }
 
-export function useEvaluationStatus(pacienteId: string): EvaluationStatus {
+export function useEvaluationStatus(pacienteId: string, sesionId?: string): EvaluationStatus {
   const [status, setStatus] = useState<EvaluationStatus>({
     preCompleted: false,
     postCompleted: false,
@@ -45,8 +45,16 @@ export function useEvaluationStatus(pacienteId: string): EvaluationStatus {
       try {
         setStatus(prev => ({ ...prev, isLoading: true }))
 
-        // Obtener la última sesión del paciente
-        const ultimaSesion = await getUltimaSesion(pacienteId)
+        let ultimaSesion;
+        if (sesionId) {
+          // Si se provee un sesionId, obtenemos las evaluaciones de esa sesión específica
+          // y construimos un objeto de sesión parcial.
+          const evaluaciones = await getEvaluacionesPorSesion(sesionId);
+          // Asumimos que la sesión existe si llegamos aquí.
+          ultimaSesion = { id: sesionId, fecha: evaluaciones[0]?.fecha || 'N/A', hora: 'N/A', sentimiento: 'N/A' };
+        } else {
+          ultimaSesion = await getUltimaSesion(pacienteId);
+        }
         
         if (!ultimaSesion) {
           setStatus({
@@ -144,7 +152,7 @@ export function useEvaluationStatus(pacienteId: string): EvaluationStatus {
     return () => {
       window.removeEventListener('evaluationStatusUpdate', handleUpdate)
     }
-  }, [pacienteId])
+  }, [pacienteId, sesionId])
 
   return status
 }
