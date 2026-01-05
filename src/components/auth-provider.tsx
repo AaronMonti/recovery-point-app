@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
+import { useKeepAlive } from '@/hooks/useKeepAlive'
 
 interface AuthContextType {
   user: User | null
@@ -20,6 +21,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
+  
+  // Usar el hook de keep-alive para mantener activa la instancia de Supabase
+  // Solo se activa cuando hay una sesión
+  // Para probar: cambia el intervalo a 30 * 1000 (30 segundos) temporalmente
+  useKeepAlive(4 * 24 * 60 * 60 * 1000, !!session) // 4 días
 
   useEffect(() => {
     // Obtener sesión inicial de forma síncrona si es posible
@@ -49,7 +55,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
       }
     )
 
-    return () => subscription.unsubscribe()
+    return () => {
+      subscription.unsubscribe()
+    }
   }, [])
 
   return (
