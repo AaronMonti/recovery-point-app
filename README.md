@@ -55,6 +55,10 @@ This is a Next.js application for managing patients and their physical therapy s
      ```
      TURSO_DATABASE_URL="your-turso-database-url"
      TURSO_AUTH_TOKEN="your-turso-auth-token"
+     AUTH_SECRET="run: npx auth secret"
+     AUTH_URL="http://localhost:3000"
+     AUTH_ADMIN_EMAIL="admin@example.com"
+     AUTH_ADMIN_PASSWORD="your-secure-password"
      ```
 
 5. **Apply database migrations:**
@@ -72,6 +76,12 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) in your browser to see the application.
+
+### Authentication (Auth.js)
+
+Login uses [Auth.js](https://authjs.dev/) (NextAuth v5) with email/password. A single admin account is defined with `AUTH_ADMIN_EMAIL` and `AUTH_ADMIN_PASSWORD` (server-only env vars, no database table).
+
+Generate `AUTH_SECRET` with `npx auth secret`. On Vercel, also set `AUTH_URL` to your production URL (e.g. `https://your-app.vercel.app`).
 
 ## Available Scripts
 

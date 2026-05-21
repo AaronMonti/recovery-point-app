@@ -1,28 +1,26 @@
 'use client'
 
-import { supabase } from '@/lib/supabase'
-import { useAuthContext } from '@/components/auth-provider'
+import { useSession, signOut as nextAuthSignOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 
 export function useAuth() {
-  const { user, session, loading } = useAuthContext()
+  const { data: session, status } = useSession()
   const router = useRouter()
 
   const signOut = async () => {
     try {
-      await supabase.auth.signOut()
-      // Usar router de Next.js para navegación rápida
+      await nextAuthSignOut({ redirect: false })
       router.push('/login')
-      router.refresh() // Refrescar para que el middleware vea la sesión cerrada
+      router.refresh()
     } catch (error) {
       console.error('Error signing out:', error)
     }
   }
 
   return {
-    user,
+    user: session?.user ?? null,
     session,
-    loading,
+    loading: status === 'loading',
     signOut,
   }
 }

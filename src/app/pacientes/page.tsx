@@ -1,4 +1,4 @@
-import { getPacientesConBusqueda } from "@/lib/actions";
+import { getPacientesConBusqueda, getCategorias } from "@/lib/actions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -35,8 +35,14 @@ export default async function PacientesPage({ searchParams }: { searchParams: Pr
   const currentPage = typeof params.page === 'string' ? parseInt(params.page) : 1;
 
   const pageSize = 9; // 3x3 grid
-  const result = await getPacientesConBusqueda(startDate, endDate, searchQuery, categoriaId, currentPage, pageSize);
+  const [result, categoriasResult] = await Promise.all([
+    getPacientesConBusqueda(startDate, endDate, searchQuery, categoriaId, currentPage, pageSize),
+    getCategorias(),
+  ]);
   const { pacientes, total, totalPages } = result;
+  const categorias = categoriasResult.success && categoriasResult.data
+    ? categoriasResult.data.map((c) => ({ id: c.id, nombre: c.nombre }))
+    : [];
 
   return (
     <ProtectedPage>
@@ -80,7 +86,7 @@ export default async function PacientesPage({ searchParams }: { searchParams: Pr
                   Cargando categorías...
                 </div>
               }>
-                <CategoryFilter />
+                <CategoryFilter categorias={categorias} />
               </Suspense>
               <Suspense fallback={
                 <div className="flex items-center gap-2 text-muted-foreground h-10">

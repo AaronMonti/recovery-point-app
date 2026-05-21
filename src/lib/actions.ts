@@ -10,6 +10,30 @@ interface EvaluationResponse {
   value: number;
 }
 
+function parseSesionTimestamp(fecha: string, hora: string): number {
+  const [dia, mes, año] = fecha.split('-').map(Number);
+  const [horas, minutos] = hora.split(':').map(Number);
+  return new Date(año, mes - 1, dia, horas || 0, minutos || 0).getTime();
+}
+
+function isSesionMoreRecent(
+  a: { fecha: string; hora: string },
+  b: { fecha: string; hora: string }
+): boolean {
+  return parseSesionTimestamp(a.fecha, a.hora) > parseSesionTimestamp(b.fecha, b.hora);
+}
+
+function hasEvaluacionPendiente(respuestasComprimidas: string): boolean {
+  try {
+    const respuestas: EvaluationResponse[] = JSON.parse(respuestasComprimidas);
+    const tienePre = respuestas.some((r) => r.questionId.includes('_pre'));
+    const tienePost = respuestas.some((r) => r.questionId.includes('_post'));
+    return tienePre && !tienePost;
+  } catch {
+    return false;
+  }
+}
+
 export async function getPacientes(startDate?: string, endDate?: string) {
   try {
     
@@ -141,67 +165,91 @@ export async function getPacientesConBusqueda(
       );
     }
 
-    // Obtener conteo de sesiones y estado de evaluación para TODOS los pacientes (antes de paginar)
-    const pacientesConSesiones = await Promise.all(
-      pacientesData.map(async (paciente) => {
-        const sesionesCount = await db
-          .select({ count: sql<number>`count(*)` })
-          .from(sesiones_diarias)
-          .where(eq(sesiones_diarias.paciente_id, paciente.id))
-          .get();
-        
-        // Obtener la última sesión del paciente
-        const ultimaSesion = await db
-          .select()
-          .from(sesiones_diarias)
-          .where(eq(sesiones_diarias.paciente_id, paciente.id))
-          .orderBy(desc(sesiones_diarias.fecha), desc(sesiones_diarias.hora))
-          .get();
-        
-        // Verificar estado de evaluación
-        let evaluacionPendiente = false;
-        let fechaUltimaSesion: Date | null = null;
-        let diasDesdeSesion = 0;
-        
-        if (ultimaSesion) {
-          // Calcular días desde la última sesión
-          const [dia, mes, año] = ultimaSesion.fecha.split('-').map(Number);
-          fechaUltimaSesion = new Date(año, mes - 1, dia);
-          const hoy = new Date();
-          diasDesdeSesion = Math.floor((hoy.getTime() - fechaUltimaSesion.getTime()) / (1000 * 60 * 60 * 24));
-          
-          const evaluacionesData = await db
-            .select()
-            .from(evaluaciones)
-            .where(eq(evaluaciones.sesionId, ultimaSesion.id))
-            .all();
-          
-          // Verificar si falta la evaluación post-sesión
-          evaluacionesData.forEach((evaluacion: { respuestasComprimidas: string }) => {
-            try {
-              const respuestas = JSON.parse(evaluacion.respuestasComprimidas);
-              const tieneEvaluacionPre = respuestas.some((r: EvaluationResponse) => r.questionId.includes('_pre'));
-              const tieneEvaluacionPost = respuestas.some((r: EvaluationResponse) => r.questionId.includes('_post'));
-              
-              // Si tiene pre-evaluación pero no post-evaluación, está pendiente
-              if (tieneEvaluacionPre && !tieneEvaluacionPost) {
-                evaluacionPendiente = true;
-              }
-            } catch (error) {
-              console.error('Error parsing evaluation:', error);
-            }
-          });
-        }
-        
-        return {
-          ...paciente,
-          sesiones_completadas: sesionesCount?.count || 0,
-          evaluacionPendiente,
-          fechaUltimaSesion,
-          diasDesdeSesion
-        };
-      })
+    const pacienteIds = pacientesData.map((p) => p.id);
+
+    const sesionesCounts =
+      pacienteIds.length > 0
+        ? await db
+            .select({
+              paciente_id: sesiones_diarias.paciente_id,
+              count: sql<number>`count(*)`,
+            })
+            .from(sesiones_diarias)
+            .where(inArray(sesiones_diarias.paciente_id, pacienteIds))
+            .groupBy(sesiones_diarias.paciente_id)
+            .all()
+        : [];
+
+    const countsByPaciente = new Map(
+      sesionesCounts.map((row) => [row.paciente_id, row.count])
     );
+
+    const allSesiones =
+      pacienteIds.length > 0
+        ? await db
+            .select()
+            .from(sesiones_diarias)
+            .where(inArray(sesiones_diarias.paciente_id, pacienteIds))
+            .all()
+        : [];
+
+    const ultimaSesionByPaciente = new Map<string, (typeof allSesiones)[number]>();
+    for (const sesion of allSesiones) {
+      if (!sesion.paciente_id) continue;
+      const existing = ultimaSesionByPaciente.get(sesion.paciente_id);
+      if (!existing || isSesionMoreRecent(sesion, existing)) {
+        ultimaSesionByPaciente.set(sesion.paciente_id, sesion);
+      }
+    }
+
+    const ultimaSesionIds = [...ultimaSesionByPaciente.values()].map((s) => s.id);
+    const evaluacionesUltimaSesion =
+      ultimaSesionIds.length > 0
+        ? await db
+            .select({
+              sesionId: evaluaciones.sesionId,
+              respuestasComprimidas: evaluaciones.respuestasComprimidas,
+            })
+            .from(evaluaciones)
+            .where(inArray(evaluaciones.sesionId, ultimaSesionIds))
+            .all()
+        : [];
+
+    const evaluacionesBySesion = new Map<string, typeof evaluacionesUltimaSesion>();
+    for (const evaluacion of evaluacionesUltimaSesion) {
+      const list = evaluacionesBySesion.get(evaluacion.sesionId) ?? [];
+      list.push(evaluacion);
+      evaluacionesBySesion.set(evaluacion.sesionId, list);
+    }
+
+    const hoy = new Date();
+    const pacientesConSesiones = pacientesData.map((paciente) => {
+      const ultimaSesion = ultimaSesionByPaciente.get(paciente.id);
+      let evaluacionPendiente = false;
+      let fechaUltimaSesion: Date | null = null;
+      let diasDesdeSesion = 0;
+
+      if (ultimaSesion) {
+        const [dia, mes, año] = ultimaSesion.fecha.split('-').map(Number);
+        fechaUltimaSesion = new Date(año, mes - 1, dia);
+        diasDesdeSesion = Math.floor(
+          (hoy.getTime() - fechaUltimaSesion.getTime()) / (1000 * 60 * 60 * 24)
+        );
+
+        const evaluacionesData = evaluacionesBySesion.get(ultimaSesion.id) ?? [];
+        evaluacionPendiente = evaluacionesData.some((ev) =>
+          hasEvaluacionPendiente(ev.respuestasComprimidas)
+        );
+      }
+
+      return {
+        ...paciente,
+        sesiones_completadas: countsByPaciente.get(paciente.id) ?? 0,
+        evaluacionPendiente,
+        fechaUltimaSesion,
+        diasDesdeSesion,
+      };
+    });
 
     // Ordenar pacientes: primero los que tienen evaluación pendiente, luego alfabéticamente
     const pacientesOrdenados = pacientesConSesiones.sort((a, b) => {
@@ -364,85 +412,109 @@ export async function getSesionesDiarias(paciente_id: string) {
       return new Date(anioB, mesB - 1, diaB).getTime() - new Date(anioA, mesA - 1, diaA).getTime();
     });
 
-    // Obtener evaluaciones para cada sesión
-    const sesionesConEvaluaciones = await Promise.all(
-      sesiones.map(async (sesion) => {
-        const evaluacion = await db
-          .select({
-            id: evaluaciones.id,
-            promediosComprimidos: evaluaciones.promediosComprimidos,
-            respuestasComprimidas: evaluaciones.respuestasComprimidas,
-          })
-          .from(evaluaciones)
-          .where(eq(evaluaciones.sesionId, sesion.id))
-          .get();
+    const sesionIds = sesiones.map((s) => s.id);
+    const evaluacionesRows =
+      sesionIds.length > 0
+        ? await db
+            .select({
+              sesionId: evaluaciones.sesionId,
+              id: evaluaciones.id,
+              promediosComprimidos: evaluaciones.promediosComprimidos,
+              respuestasComprimidas: evaluaciones.respuestasComprimidas,
+            })
+            .from(evaluaciones)
+            .where(inArray(evaluaciones.sesionId, sesionIds))
+            .all()
+        : [];
 
-        let promedioGeneral = null;
-        let preEvaluacionCompleta = false;
-        let postEvaluacionCompleta = false;
+    const evaluacionBySesion = new Map(
+      evaluacionesRows.map((row) => [row.sesionId, row])
+    );
 
-        if (evaluacion?.promediosComprimidos) {
-          if (evaluacion.respuestasComprimidas) {
-            try {
-              const respuestas = JSON.parse(evaluacion.respuestasComprimidas);
-              preEvaluacionCompleta = respuestas.some((r: EvaluationResponse) => r.questionId.includes('_pre'));
-              postEvaluacionCompleta = respuestas.some((r: EvaluationResponse) => r.questionId.includes('_post'));
-            } catch (error) {
-              console.error('Error parseando respuestas para estado de evaluación:', error);
-            }
-          }
+    const sesionesConEvaluaciones = sesiones.map((sesion) => {
+      const evaluacion = evaluacionBySesion.get(sesion.id);
 
+      let promedioGeneral = null;
+      let preEvaluacionCompleta = false;
+      let postEvaluacionCompleta = false;
 
-
+      if (evaluacion?.promediosComprimidos) {
+        if (evaluacion.respuestasComprimidas) {
           try {
-            const promedios = JSON.parse(evaluacion.promediosComprimidos);
-            
-            // Calcular promedios pre y post por separado para ser consistente
-            const valoresPre = Object.entries(promedios)
-              .filter(([key, val]) => 
-                (key === 'stress' || key === 'sueno' || key === 'fatiga' || key === 'dolorMuscular') && 
-                typeof val === 'number'
-              )
-              .map(([, val]) => val as number);
-              
-            const valoresPost = Object.entries(promedios)
-              .filter(([key, val]) => 
-                (key === 'percepcionEsfuerzo' || key === 'eva') && 
-                typeof val === 'number'
-              )
-              .map(([, val]) => val as number);
-            
-            let promedioPre = 0;
-            let promedioPost = 0;
-            let count = 0;
-            
-            if (valoresPre.length > 0) {
-              promedioPre = valoresPre.reduce((sum, val) => sum + val, 0) / valoresPre.length;
-              count++;
-            }
-            
-            if (valoresPost.length > 0) {
-              promedioPost = valoresPost.reduce((sum, val) => sum + val, 0) / valoresPost.length;
-              count++;
-            }
-            
-            if (count > 0) {
-              promedioGeneral = (promedioPre + promedioPost) / count;
-            }
+            const respuestas: EvaluationResponse[] = JSON.parse(
+              evaluacion.respuestasComprimidas
+            );
+            preEvaluacionCompleta = respuestas.some((r) =>
+              r.questionId.includes('_pre')
+            );
+            postEvaluacionCompleta = respuestas.some((r) =>
+              r.questionId.includes('_post')
+            );
           } catch (error) {
-            console.error('Error parseando promedios:', error);
+            console.error(
+              'Error parseando respuestas para estado de evaluación:',
+              error
+            );
           }
         }
 
-        return {
-          ...sesion,
-          evaluacionId: evaluacion?.id || null,
-          promedioGeneral: promedioGeneral ? Math.round(promedioGeneral * 100) / 100 : null,
-          preEvaluacionCompleta: preEvaluacionCompleta,
-          postEvaluacionCompleta: postEvaluacionCompleta,
-        };
-      })
-    );
+        try {
+          const promedios = JSON.parse(evaluacion.promediosComprimidos);
+
+          const valoresPre = Object.entries(promedios)
+            .filter(
+              ([key, val]) =>
+                (key === 'stress' ||
+                  key === 'sueno' ||
+                  key === 'fatiga' ||
+                  key === 'dolorMuscular') &&
+                typeof val === 'number'
+            )
+            .map(([, val]) => val as number);
+
+          const valoresPost = Object.entries(promedios)
+            .filter(
+              ([key, val]) =>
+                (key === 'percepcionEsfuerzo' || key === 'eva') &&
+                typeof val === 'number'
+            )
+            .map(([, val]) => val as number);
+
+          let promedioPre = 0;
+          let promedioPost = 0;
+          let count = 0;
+
+          if (valoresPre.length > 0) {
+            promedioPre =
+              valoresPre.reduce((sum, val) => sum + val, 0) / valoresPre.length;
+            count++;
+          }
+
+          if (valoresPost.length > 0) {
+            promedioPost =
+              valoresPost.reduce((sum, val) => sum + val, 0) /
+              valoresPost.length;
+            count++;
+          }
+
+          if (count > 0) {
+            promedioGeneral = (promedioPre + promedioPost) / count;
+          }
+        } catch (error) {
+          console.error('Error parseando promedios:', error);
+        }
+      }
+
+      return {
+        ...sesion,
+        evaluacionId: evaluacion?.id || null,
+        promedioGeneral: promedioGeneral
+          ? Math.round(promedioGeneral * 100) / 100
+          : null,
+        preEvaluacionCompleta,
+        postEvaluacionCompleta,
+      };
+    });
 
     return sesionesConEvaluaciones;
   } catch (error) {

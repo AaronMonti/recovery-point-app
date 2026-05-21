@@ -1,42 +1,22 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { getCategorias } from '@/lib/actions';
 import { Tag } from 'lucide-react';
 
-interface Categoria {
+export interface CategoriaOption {
   id: string;
   nombre: string;
-  descripcion: string | null;
-  created_at: string | null;
 }
 
-export function CategoryFilter() {
+interface CategoryFilterProps {
+  categorias: CategoriaOption[];
+}
+
+export function CategoryFilter({ categorias }: CategoryFilterProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [categorias, setCategorias] = useState<Categoria[]>([]);
-  const [loading, setLoading] = useState(true);
-  
   const selectedCategory = searchParams.get('categoria') || '';
-
-  useEffect(() => {
-    const fetchCategorias = async () => {
-      try {
-        const result = await getCategorias();
-        if (result.success && result.data) {
-          setCategorias(result.data);
-        }
-      } catch (error) {
-        console.error('Error fetching categories:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCategorias();
-  }, []);
 
   const handleCategoryChange = (value: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -52,15 +32,6 @@ export function CategoryFilter() {
     
     router.push(`/pacientes?${params.toString()}`);
   };
-
-  if (loading) {
-    return (
-      <div className="flex items-center gap-2 text-muted-foreground">
-        <Tag className="h-4 w-4 animate-spin" />
-        Cargando categorías...
-      </div>
-    );
-  }
 
   return (
     <div className="flex items-center gap-2 h-10">

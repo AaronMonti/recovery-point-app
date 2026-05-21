@@ -36,7 +36,7 @@ export function SearchBar() {
 
     const timer = setTimeout(() => {
       updateSearchParams(searchQuery);
-    }, 100);
+    }, 400);
 
     return () => clearTimeout(timer);
   }, [searchQuery, searchParams, updateSearchParams]);
