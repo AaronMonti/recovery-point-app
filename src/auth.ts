@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import { authConfig } from "@/auth.config";
 
 function getAdminCredentials() {
   const email = process.env.AUTH_ADMIN_EMAIL?.trim().toLowerCase();
@@ -9,7 +10,7 @@ function getAdminCredentials() {
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  trustHost: true,
+  ...authConfig,
   providers: [
     Credentials({
       credentials: {
@@ -44,14 +45,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
-  pages: {
-    signIn: "/login",
-  },
   session: {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60,
   },
   callbacks: {
+    ...authConfig.callbacks,
     jwt({ token, user }) {
       if (user) {
         token.id = user.id;
@@ -67,20 +66,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.name = token.name as string | null | undefined;
       }
       return session;
-    },
-    authorized({ auth, request: { nextUrl } }) {
-      const isLoggedIn = !!auth?.user;
-      const isLoginPage = nextUrl.pathname === "/login";
-
-      if (isLoggedIn && isLoginPage) {
-        return Response.redirect(new URL("/", nextUrl));
-      }
-
-      if (!isLoggedIn && !isLoginPage) {
-        return false;
-      }
-
-      return true;
     },
   },
 });
